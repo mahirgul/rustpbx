@@ -30,12 +30,13 @@ pub async fn get_dashboard_metrics(State(pool): State<Arc<SqlitePool>>) -> Json<
             .as_secs()
     );
 
-    let active_registrations_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM sip_registrations WHERE expires_at > ?")
-            .bind(&now_secs)
-            .fetch_one(pool.as_ref())
-            .await
-            .unwrap_or(0);
+    let active_registrations_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sip_registrations WHERE CAST(expires_at AS INTEGER) > CAST(? AS INTEGER)",
+    )
+    .bind(&now_secs)
+    .fetch_one(pool.as_ref())
+    .await
+    .unwrap_or(0);
 
     // Perform real live socket health checks for binaries
     let sip_engine_status = check_udp_port("127.0.0.1:5060").await;

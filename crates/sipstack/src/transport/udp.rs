@@ -2,7 +2,7 @@ use bytes::Bytes;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::UdpSocket;
-use tracing::{error, info};
+use tracing::info;
 
 use sipcore::parser::parse_message;
 use sipcore::types::SipMessage;
@@ -40,8 +40,13 @@ impl UdpTransport {
         buf.truncate(len);
         let raw = Bytes::from(buf);
 
+        // Ignore short non-SIP UDP packets (such as PING keep-alives) silently
+        if raw.len() < 10 {
+            return Err("Short UDP packet ignored".to_string());
+        }
+
         parse_message(raw).map(|msg| (msg, src)).map_err(|e| {
-            error!("Failed to parse SIP UDP packet from {}: {}", src, e);
+            tracing::debug!("Non-SIP or unparseable UDP packet from {}: {}", src, e);
             e.to_string()
         })
     }

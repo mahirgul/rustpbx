@@ -45,7 +45,7 @@ pub async fn list_extensions(
             e.email, 
             e.record_calls, 
             e.is_active,
-            CASE WHEN r.extension_number IS NOT NULL AND r.expires_at > ? THEN 1 ELSE 0 END AS is_registered
+            CASE WHEN r.extension_number IS NOT NULL AND CAST(r.expires_at AS INTEGER) > CAST(? AS INTEGER) THEN 1 ELSE 0 END AS is_registered
         FROM extensions e
         LEFT JOIN sip_registrations r ON e.extension_number = r.extension_number
         ORDER BY e.extension_number ASC
