@@ -114,7 +114,7 @@ async fn handle_register(
                         "Digest Auth SUCCESS for Ext {} from {}",
                         ext.extension_number, src
                     );
-                    send_simple_response(msg, StatusCode::new(200).unwrap(), src, transport).await;
+                    send_register_200_ok(msg, src, transport).await;
                 } else {
                     warn!(
                         "Digest Auth FAILED for Ext {} from {}",
@@ -129,7 +129,7 @@ async fn handle_register(
             "Digest Auth disabled. Granting 200 OK for Ext {} from {}",
             ext.extension_number, src
         );
-        send_simple_response(msg, StatusCode::new(200).unwrap(), src, transport).await;
+        send_register_200_ok(msg, src, transport).await;
     }
 }
 
@@ -170,6 +170,38 @@ async fn send_digest_challenge(
 
     let resp_msg = SipMessage::new_response(resp_line, resp_headers, Bytes::new());
     let _ = transport.send_to(&resp_msg, dest).await;
+}
+
+async fn send_register_200_ok(
+    request: SipMessage,
+    dest: SocketAddr,
+    transport: &Arc<UdpTransport>,
+) {
+    let mut resp_headers = extract_base_headers(&request);
+
+    if let Some(contact) = request.headers.get(&HeaderName::Contact) {
+        resp_headers.push(contact.clone());
+    }
+    resp_headers.push(Header::new(HeaderName::Expires, Bytes::from("3600")));
+    resp_headers.push(Header::new(
+        HeaderName::UserAgent,
+        Bytes::from("RustPBX/0.1.0"),
+    ));
+    resp_headers.push(Header::new(HeaderName::ContentLength, Bytes::from("0")));
+
+    let status_code = StatusCode::new(200).unwrap();
+    let resp_line = ResponseLine {
+        version: Version::default(),
+        status_code,
+        reason_phrase: "OK".to_string(),
+    };
+
+    let resp_msg = SipMessage::new_response(resp_line, resp_headers, Bytes::new());
+    if let Err(e) = transport.send_to(&resp_msg, dest).await {
+        warn!("Failed to send REGISTER 200 OK to {}: {}", dest, e);
+    } else {
+        info!("Sent REGISTER 200 OK (Expires: 3600) to {}", dest);
+    }
 }
 
 async fn send_simple_response(
