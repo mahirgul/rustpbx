@@ -5,7 +5,14 @@ use serde::Deserialize;
 pub struct Config {
     pub sip: SipConfig,
     pub api: ApiConfig,
+    pub database: DatabaseConfig,
     pub media_node: MediaNodeConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
+pub struct DatabaseConfig {
+    pub db_path: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -38,6 +45,9 @@ impl Default for Config {
             api: ApiConfig {
                 http_bind_addr: "0.0.0.0:8080".to_string(),
                 secret_key: "change-me-in-production".to_string(),
+            },
+            database: DatabaseConfig {
+                db_path: "sqlite:data/rustpbx.db".to_string(),
             },
             media_node: MediaNodeConfig {
                 grpc_target_url: "http://127.0.0.1:50051".to_string(),

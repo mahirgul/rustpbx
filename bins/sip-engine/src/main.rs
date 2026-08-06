@@ -1,11 +1,13 @@
 mod api;
 mod b2bua;
 mod config;
+mod db;
 mod sbc;
 
 use api::{create_rest_router, AppState};
 use b2bua::CallManager;
 use config::Config;
+use db::DbStore;
 use sbc::SbcPipeline;
 use sipstack::UdpTransport;
 use std::net::SocketAddr;
@@ -26,6 +28,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let http_addr: SocketAddr = cfg.api.http_bind_addr.parse()?;
 
     info!("Starting RustPBX Core SIP Engine...");
+
+    // Initialize SQLite Database and load extensions
+    std::fs::create_dir_all("data")?;
+    let db_store = DbStore::init(&cfg.database.db_path).await?;
+    let extensions = db_store.load_extensions().await?;
+    for ext in &extensions {
+        info!(
+            "Loaded Extension {}: {} (Record calls: {})",
+            ext.extension_number,
+            ext.display_name,
+            ext.is_recording_enabled()
+        );
+    }
     info!("SIP UDP Transport listening on {}", sip_addr);
     info!("HTTP REST Control API listening on http://{}", http_addr);
 
