@@ -25,7 +25,7 @@ pub struct Extension {
 #[derive(Debug, Deserialize)]
 pub struct CreateExtensionRequest {
     pub extension_number: String,
-    pub password: String,
+    pub password: Option<String>,
     pub display_name: String,
     pub email: Option<String>,
     pub record_calls: Option<bool>,
@@ -122,6 +122,11 @@ pub async fn create_extension(
         .allowed_transport
         .unwrap_or_else(|| "udp,tcp,tls,ws".to_string());
 
+    let password = payload
+        .password
+        .filter(|p| !p.trim().is_empty())
+        .unwrap_or_else(|| format!("{}100", payload.extension_number));
+
     let result = sqlx::query(
         r#"
         INSERT INTO extensions (
@@ -133,7 +138,7 @@ pub async fn create_extension(
         "#,
     )
     .bind(&payload.extension_number)
-    .bind(&payload.password)
+    .bind(&password)
     .bind(&payload.display_name)
     .bind(&payload.email)
     .bind(record_calls)

@@ -12,6 +12,24 @@ document.addEventListener('DOMContentLoaded', () => {
         system: renderSystem
     };
 
+    function showToast(message, type = 'info') {
+        let toast = document.getElementById('toast-notification');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toast-notification';
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
+                border-radius: 8px; font-weight: bold; color: white; z-index: 2000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+        }
+        toast.style.background = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : '#3b82f6');
+        toast.textContent = message;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 3500);
+    }
+
     function navigateTo(page) {
         navItems.forEach(item => {
             item.classList.toggle('active', item.dataset.page === page);
@@ -33,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialPage = window.location.hash.replace('#', '') || 'dashboard';
     navigateTo(initialPage);
 
+    // --- 1. DASHBOARD VIEW ---
     async function renderDashboard() {
         try {
             const res = await fetch('/api/v1/system/dashboard');
@@ -83,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- 2. EXTENSIONS VIEW ---
     async function renderExtensions() {
         try {
             const res = await fetch('/api/v1/extensions');
@@ -105,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </tr>
                     </thead>
                     <tbody>
+                        ${extensions.length === 0 ? '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No extensions found. Click Add Extension to create one.</td></tr>' : ''}
                         ${extensions.map(ext => `
                             <tr>
                                 <td><strong>${ext.extension_number}</strong></td>
@@ -138,8 +159,13 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.btn-delete').forEach(btn => {
                 btn.addEventListener('click', async () => {
                     if (confirm(`Are you sure you want to delete Extension ${btn.dataset.number}?`)) {
-                        await fetch(`/api/v1/extensions/${btn.dataset.id}`, { method: 'DELETE' });
-                        renderExtensions();
+                        const delRes = await fetch(`/api/v1/extensions/${btn.dataset.id}`, { method: 'DELETE' });
+                        if (delRes.ok) {
+                            showToast(`Extension ${btn.dataset.number} deleted successfully`, 'success');
+                            renderExtensions();
+                        } else {
+                            showToast('Failed to delete extension', 'error');
+                        }
                     }
                 });
             });
@@ -261,35 +287,306 @@ document.addEventListener('DOMContentLoaded', () => {
             const pass = document.getElementById('extPass').value;
             if (pass) payload.password = pass;
 
+            let response;
             if (isEdit) {
-                await fetch(`/api/v1/extensions/${ext.id}`, {
+                response = await fetch(`/api/v1/extensions/${ext.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
             } else {
                 payload.extension_number = document.getElementById('extNum').value;
-                await fetch('/api/v1/extensions', {
+                response = await fetch('/api/v1/extensions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
             }
 
-            modalContainer.style.display = 'none';
-            renderExtensions();
+            if (response.ok) {
+                showToast(`Extension ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
+                modalContainer.style.display = 'none';
+                renderExtensions();
+            } else {
+                showToast(`Failed to ${isEdit ? 'update' : 'create'} extension.`, 'error');
+            }
         });
     }
 
+    // --- 3. TRUNKS VIEW ---
     async function renderTrunks() {
-        contentArea.innerHTML = `<div class="card"><h2>SIP Trunks</h2><p>Manage outbound/inbound PSTN gateways.</p></div>`;
+        try {
+            const res = await fetch('/api/v1/trunks');
+            const trunks = await res.json();
+
+            contentArea.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2>SIP Trunks</h2>
+                    <button id="btn-add-trunk" class="btn">+ Add SIP Trunk</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Trunk Name</th>
+                            <th>SIP Server</th>
+                            <th>Port</th>
+                            <th>Auth Username</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${trunks.length === 0 ? '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No SIP trunks configured.</td></tr>' : ''}
+                        ${trunks.map(t => `
+                            <tr>
+                                <td><strong>${t.trunk_name}</strong></td>
+                                <td>${t.sip_server}</td>
+                                <td><code>${t.port}</code></td>
+                                <td>${t.auth_username || '-'}</td>
+                                <td><span class="badge">🟢 Active</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger btn-delete-trunk" data-id="${t.id}" data-name="${t.trunk_name}">🗑️ Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('btn-add-trunk').addEventListener('click', () => openTrunkModal());
+
+            document.querySelectorAll('.btn-delete-trunk').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (confirm(`Delete trunk ${btn.dataset.name}?`)) {
+                        const delRes = await fetch(`/api/v1/trunks/${btn.dataset.id}`, { method: 'DELETE' });
+                        if (delRes.ok) {
+                            showToast(`Trunk ${btn.dataset.name} deleted`, 'success');
+                            renderTrunks();
+                        }
+                    }
+                });
+            });
+        } catch (e) {
+            contentArea.innerHTML = `<div class="card">Error loading trunk data</div>`;
+        }
     }
 
+    function openTrunkModal() {
+        modalContainer.innerHTML = `
+            <div class="modal-backdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+                <div class="modal" style="background: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); max-width: 500px; width: 90%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2>Add SIP Trunk</h2>
+                        <button id="closeTrunkModal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                    </div>
+                    <form id="trunkForm">
+                        <div class="form-group">
+                            <label>Trunk Name *</label>
+                            <input type="text" id="trunkName" class="form-control" required placeholder="e.g. Twilio-Carrier">
+                        </div>
+                        <div class="form-group">
+                            <label>SIP Server Host/IP *</label>
+                            <input type="text" id="trunkHost" class="form-control" required placeholder="e.g. sip.provider.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Port</label>
+                            <input type="number" id="trunkPort" class="form-control" value="5060">
+                        </div>
+                        <div class="form-group">
+                            <label>Auth Username</label>
+                            <input type="text" id="trunkUser" class="form-control" placeholder="Optional">
+                        </div>
+                        <div class="form-group">
+                            <label>Auth Password</label>
+                            <input type="password" id="trunkPass" class="form-control" placeholder="Optional">
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+                            <button type="button" class="btn" id="cancelTrunkModal" style="background: var(--surface-light);">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Trunk</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        modalContainer.style.display = 'block';
+
+        const closeModal = () => { modalContainer.style.display = 'none'; };
+        document.getElementById('closeTrunkModal').addEventListener('click', closeModal);
+        document.getElementById('cancelTrunkModal').addEventListener('click', closeModal);
+
+        document.getElementById('trunkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                trunk_name: document.getElementById('trunkName').value,
+                sip_server: document.getElementById('trunkHost').value,
+                port: parseInt(document.getElementById('trunkPort').value) || 5060,
+                auth_username: document.getElementById('trunkUser').value || null,
+                auth_password: document.getElementById('trunkPass').value || null
+            };
+
+            const res = await fetch('/api/v1/trunks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                showToast('SIP Trunk added successfully!', 'success');
+                modalContainer.style.display = 'none';
+                renderTrunks();
+            } else {
+                showToast('Failed to add SIP trunk', 'error');
+            }
+        });
+    }
+
+    // --- 4. DIALPLAN VIEW ---
     async function renderDialplan() {
-        contentArea.innerHTML = `<div class="card"><h2>Dialplan Rules</h2><p>Call routing engine and pattern matching.</p></div>`;
+        try {
+            const res = await fetch('/api/v1/dialplan');
+            const rules = await res.json();
+
+            contentArea.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2>Dialplan Rules</h2>
+                    <button id="btn-add-rule" class="btn">+ Add Dialplan Rule</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Priority</th>
+                            <th>Rule Name</th>
+                            <th>Regex Pattern</th>
+                            <th>Destination Type</th>
+                            <th>Target</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rules.length === 0 ? '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No dialplan rules configured.</td></tr>' : ''}
+                        ${rules.map(r => `
+                            <tr>
+                                <td><code>${r.priority}</code></td>
+                                <td><strong>${r.rule_name}</strong></td>
+                                <td><code>${r.pattern}</code></td>
+                                <td><span class="badge">${r.destination_type}</span></td>
+                                <td>${r.destination_target}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger btn-delete-rule" data-id="${r.id}" data-name="${r.rule_name}">🗑️ Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('btn-add-rule').addEventListener('click', () => openRuleModal());
+
+            document.querySelectorAll('.btn-delete-rule').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (confirm(`Delete rule ${btn.dataset.name}?`)) {
+                        const delRes = await fetch(`/api/v1/dialplan/${btn.dataset.id}`, { method: 'DELETE' });
+                        if (delRes.ok) {
+                            showToast(`Rule ${btn.dataset.name} deleted`, 'success');
+                            renderDialplan();
+                        }
+                    }
+                });
+            });
+        } catch (e) {
+            contentArea.innerHTML = `<div class="card">Error loading dialplan data</div>`;
+        }
     }
 
+    function openRuleModal() {
+        modalContainer.innerHTML = `
+            <div class="modal-backdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+                <div class="modal" style="background: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); max-width: 500px; width: 90%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2>Add Dialplan Rule</h2>
+                        <button id="closeRuleModal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                    </div>
+                    <form id="ruleForm">
+                        <div class="form-group">
+                            <label>Rule Name *</label>
+                            <input type="text" id="ruleName" class="form-control" required placeholder="e.g. Outbound Calls">
+                        </div>
+                        <div class="form-group">
+                            <label>Regex Pattern *</label>
+                            <input type="text" id="rulePattern" class="form-control" required placeholder="e.g. ^9[0-9]+$">
+                        </div>
+                        <div class="form-group">
+                            <label>Destination Type</label>
+                            <select id="ruleType" class="form-control">
+                                <option value="extension">Extension</option>
+                                <option value="trunk">Trunk</option>
+                                <option value="ivr">IVR Menu</option>
+                                <option value="queue">Call Queue</option>
+                                <option value="voicemail">Voicemail</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Target *</label>
+                            <input type="text" id="ruleTarget" class="form-control" required placeholder="e.g. self or Trunk-Name">
+                        </div>
+                        <div class="form-group">
+                            <label>Priority</label>
+                            <input type="number" id="rulePriority" class="form-control" value="1">
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+                            <button type="button" class="btn" id="cancelRuleModal" style="background: var(--surface-light);">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Rule</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        modalContainer.style.display = 'block';
+
+        const closeModal = () => { modalContainer.style.display = 'none'; };
+        document.getElementById('closeRuleModal').addEventListener('click', closeModal);
+        document.getElementById('cancelRuleModal').addEventListener('click', closeModal);
+
+        document.getElementById('ruleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                rule_name: document.getElementById('ruleName').value,
+                pattern: document.getElementById('rulePattern').value,
+                destination_type: document.getElementById('ruleType').value,
+                destination_target: document.getElementById('ruleTarget').value,
+                priority: parseInt(document.getElementById('rulePriority').value) || 1
+            };
+
+            const res = await fetch('/api/v1/dialplan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                showToast('Dialplan Rule added successfully!', 'success');
+                modalContainer.style.display = 'none';
+                renderDialplan();
+            } else {
+                showToast('Failed to add dialplan rule', 'error');
+            }
+        });
+    }
+
+    // --- 5. SYSTEM SETTINGS VIEW ---
     async function renderSystem() {
-        contentArea.innerHTML = `<div class="card"><h2>System Info</h2><p>RustPBX Embedded Node Configuration.</p></div>`;
+        contentArea.innerHTML = `
+            <div class="card">
+                <h2>RustPBX Embedded System Information</h2>
+                <div style="margin-top: 1rem; line-height: 1.8;">
+                    <p><strong>PBX Domain:</strong> <code>pbx.local</code></p>
+                    <p><strong>SIP Signaling Port:</strong> <code>5060 (UDP/TCP)</code></p>
+                    <p><strong>REST API Port:</strong> <code>8085 (HTTP)</code></p>
+                    <p><strong>Web Admin Port:</strong> <code>8088 (HTTP)</code></p>
+                    <p><strong>Database Engine:</strong> <code>SQLite (WAL Mode) - data/rustpbx.db</code></p>
+                    <p><strong>Runtime Architecture:</strong> <code>Pure Rust (Process-Isolated Microservices)</code></p>
+                </div>
+            </div>
+        `;
     }
 });
