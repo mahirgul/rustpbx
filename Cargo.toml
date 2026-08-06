@@ -8,6 +8,7 @@ members = [
     "crates/pbx-proto",
     "bins/sip-engine",
     "bins/media-node",
+    "bins/web-admin",
 ]
 
 [workspace.dependencies]

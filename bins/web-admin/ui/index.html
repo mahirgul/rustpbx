@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RustPBX — Web Admin Console</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Rust<strong>PBX</strong></span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                    <span class="icon">📊</span> Dashboard
+                </a>
+                <a href="#extensions" class="nav-item" data-page="extensions">
+                    <span class="icon">📞</span> Extensions
+                </a>
+                <a href="#trunks" class="nav-item" data-page="trunks">
+                    <span class="icon">🌐</span> SIP Trunks
+                </a>
+                <a href="#dialplan" class="nav-item" data-page="dialplan">
+                    <span class="icon">🔀</span> Dialplan Rules
+                </a>
+                <a href="#system" class="nav-item" data-page="system">
+                    <span class="icon">⚙️</span> System Settings
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <span class="badge offline-badge">🔒 100% Offline Embedded</span>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <h1 id="page-title">Dashboard</h1>
+                <div class="status-indicator">
+                    <span class="status-dot"></span> PBX Status: <strong>Online</strong>
+                </div>
+            </header>
+
+            <div id="content-area" class="content-body">
+                <!-- Dynamic SPA Page Views Loaded Here -->
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
