@@ -45,7 +45,7 @@ impl Default for Config {
                 require_digest_auth: true,
             },
             api: ApiConfig {
-                http_bind_addr: "0.0.0.0:8080".to_string(),
+                http_bind_addr: "0.0.0.0:8085".to_string(),
                 secret_key: "change-me-in-production".to_string(),
             },
             database: DatabaseConfig {
