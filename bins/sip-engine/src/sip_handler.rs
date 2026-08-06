@@ -66,16 +66,13 @@ async fn handle_register(
         }
     };
 
-    // Extract user from Request URI or To header
-    let target_user = if let StartLine::Request(ref req) = msg.start_line {
-        req.uri.user.clone()
-    } else {
-        None
-    };
+    // Extract extension user from Request-URI or To header (RFC 3261 §10.2)
+    let target_user = extract_extension_user(&msg);
 
     let target_user = match target_user {
         Some(u) => u,
         None => {
+            warn!("Registration failed: Could not determine extension number from Request-URI or To header");
             send_simple_response(msg, StatusCode::new(400).unwrap(), src, transport).await;
             return;
         }
@@ -222,6 +219,49 @@ fn extract_base_headers(request: &SipMessage) -> Headers {
         headers.push(cseq.clone());
     }
     headers
+}
+
+fn extract_extension_user(msg: &SipMessage) -> Option<String> {
+    // 1. Check Request-URI
+    if let StartLine::Request(ref req) = msg.start_line {
+        if let Some(user) = &req.uri.user {
+            if !user.is_empty() {
+                return Some(user.clone());
+            }
+        }
+    }
+
+    // 2. Check To Header (e.g. To: <sip:100@pbx.local>)
+    if let Some(to) = msg.headers.get(&HeaderName::To) {
+        let to_str = String::from_utf8_lossy(&to.raw_value);
+        if let Some(user) = extract_user_from_sip_str(&to_str) {
+            return Some(user);
+        }
+    }
+
+    // 3. Check From Header
+    if let Some(from) = msg.headers.get(&HeaderName::From) {
+        let from_str = String::from_utf8_lossy(&from.raw_value);
+        if let Some(user) = extract_user_from_sip_str(&from_str) {
+            return Some(user);
+        }
+    }
+
+    None
+}
+
+fn extract_user_from_sip_str(input: &str) -> Option<String> {
+    if let Some(start) = input.find("sip:") {
+        let rest = &input[start + 4..];
+        if let Some(at) = rest.find('@') {
+            let user = &rest[..at];
+            let clean_user = user.trim_start_matches('"').trim_start_matches('<');
+            if !clean_user.is_empty() {
+                return Some(clean_user.to_string());
+            }
+        }
+    }
+    None
 }
 
 fn verify_digest_header(header: &str, password: &str, realm: &str) -> bool {

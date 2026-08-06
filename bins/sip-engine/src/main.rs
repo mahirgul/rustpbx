@@ -17,11 +17,20 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Setup file appender logging to logs/rustpbx.log
+    std::fs::create_dir_all("logs")?;
+    let file_appender = tracing_appender::rolling::never("logs", "rustpbx.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
+        .with_writer(tracing_subscriber::fmt::writer::Tee::new(
+            std::io::stdout,
+            non_blocking,
+        ))
         .init();
 
     let cfg = Config::default();
