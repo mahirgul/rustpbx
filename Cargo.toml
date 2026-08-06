@@ -9,6 +9,7 @@ members = [
     "bins/sip-engine",
     "bins/media-node",
     "bins/web-admin",
+    "bins/webrtc-gateway",
 ]
 
 [workspace.dependencies]

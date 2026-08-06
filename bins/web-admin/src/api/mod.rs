@@ -31,6 +31,7 @@ pub fn create_api_router(pool: Arc<SqlitePool>) -> Router {
         // Dialplan Routes
         .route("/api/v1/dialplan", get(dialplan::list_dialplan_rules))
         .route("/api/v1/dialplan", post(dialplan::create_dialplan_rule))
+        .route("/api/v1/dialplan/:id", put(dialplan::update_dialplan_rule))
         .route(
             "/api/v1/dialplan/:id",
             delete(dialplan::delete_dialplan_rule),

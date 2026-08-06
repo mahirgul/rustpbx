@@ -481,6 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <td><span class="badge">${r.destination_type}</span></td>
                                 <td>${r.destination_target}</td>
                                 <td>
+                                    <button class="btn btn-sm btn-edit-rule" data-rule='${JSON.stringify(r).replace(/'/g, "&apos;")}'>✏️ Edit</button>
                                     <button class="btn btn-sm btn-danger btn-delete-rule" data-id="${r.id}" data-name="${r.rule_name}">🗑️ Delete</button>
                                 </td>
                             </tr>
@@ -490,6 +491,13 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             document.getElementById('btn-add-rule').addEventListener('click', () => openRuleModal());
+
+            document.querySelectorAll('.btn-edit-rule').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const rule = JSON.parse(btn.dataset.rule);
+                    openRuleModal(rule);
+                });
+            });
 
             document.querySelectorAll('.btn-delete-rule').forEach(btn => {
                 btn.addEventListener('click', async () => {
@@ -507,44 +515,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function openRuleModal() {
+    function openRuleModal(rule = null) {
+        const isEdit = !!rule;
         modalContainer.innerHTML = `
             <div class="modal-backdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
                 <div class="modal" style="background: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); max-width: 500px; width: 90%;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h2>Add Dialplan Rule</h2>
+                        <h2>${isEdit ? 'Edit Dialplan Rule' : 'Add Dialplan Rule'}</h2>
                         <button id="closeRuleModal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
                     </div>
                     <form id="ruleForm">
                         <div class="form-group">
                             <label>Rule Name *</label>
-                            <input type="text" id="ruleName" class="form-control" required placeholder="e.g. Outbound Calls">
+                            <input type="text" id="ruleName" class="form-control" value="${rule ? rule.rule_name : ''}" required placeholder="e.g. Outbound Calls">
                         </div>
                         <div class="form-group">
                             <label>Regex Pattern *</label>
-                            <input type="text" id="rulePattern" class="form-control" required placeholder="e.g. ^9[0-9]+$">
+                            <input type="text" id="rulePattern" class="form-control" value="${rule ? rule.pattern : ''}" required placeholder="e.g. ^9[0-9]+$">
                         </div>
                         <div class="form-group">
                             <label>Destination Type</label>
                             <select id="ruleType" class="form-control">
-                                <option value="extension">Extension</option>
-                                <option value="trunk">Trunk</option>
-                                <option value="ivr">IVR Menu</option>
-                                <option value="queue">Call Queue</option>
-                                <option value="voicemail">Voicemail</option>
+                                <option value="extension" ${rule && rule.destination_type === 'extension' ? 'selected' : ''}>Extension</option>
+                                <option value="trunk" ${rule && rule.destination_type === 'trunk' ? 'selected' : ''}>Trunk</option>
+                                <option value="ivr" ${rule && rule.destination_type === 'ivr' ? 'selected' : ''}>IVR Menu</option>
+                                <option value="queue" ${rule && rule.destination_type === 'queue' ? 'selected' : ''}>Call Queue</option>
+                                <option value="voicemail" ${rule && rule.destination_type === 'voicemail' ? 'selected' : ''}>Voicemail</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Target *</label>
-                            <input type="text" id="ruleTarget" class="form-control" required placeholder="e.g. self or Trunk-Name">
+                            <input type="text" id="ruleTarget" class="form-control" value="${rule ? rule.destination_target : ''}" required placeholder="e.g. self or Trunk-Name">
                         </div>
                         <div class="form-group">
                             <label>Priority</label>
-                            <input type="number" id="rulePriority" class="form-control" value="1">
+                            <input type="number" id="rulePriority" class="form-control" value="${rule ? rule.priority : 1}">
                         </div>
                         <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
                             <button type="button" class="btn" id="cancelRuleModal" style="background: var(--surface-light);">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Rule</button>
+                            <button type="submit" class="btn btn-primary">${isEdit ? 'Update Rule' : 'Save Rule'}</button>
                         </div>
                     </form>
                 </div>
@@ -566,18 +575,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 priority: parseInt(document.getElementById('rulePriority').value) || 1
             };
 
-            const res = await fetch('/api/v1/dialplan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            let res;
+            if (isEdit) {
+                res = await fetch(`/api/v1/dialplan/${rule.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                res = await fetch('/api/v1/dialplan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
 
             if (res.ok) {
-                showToast('Dialplan Rule added successfully!', 'success');
+                showToast(`Dialplan Rule ${isEdit ? 'updated' : 'added'} successfully!`, 'success');
                 modalContainer.style.display = 'none';
                 renderDialplan();
             } else {
-                showToast('Failed to add dialplan rule', 'error');
+                showToast(`Failed to ${isEdit ? 'update' : 'add'} dialplan rule`, 'error');
             }
         });
     }
