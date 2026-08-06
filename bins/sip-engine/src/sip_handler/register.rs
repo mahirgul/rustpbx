@@ -73,10 +73,13 @@ pub async fn handle_register(
                 let is_valid = verify_digest_header(&header_str, &ext.password, &cfg.sip.domain);
 
                 if is_valid {
-                    info!(
+                    let log_msg = format!(
                         "Digest Auth SUCCESS for Ext {} from {}",
                         ext.extension_number, src
                     );
+                    info!("{}", log_msg);
+                    crate::logger::log_auth_audit(&log_msg);
+
                     let ua = msg
                         .headers
                         .get(&HeaderName::UserAgent)
@@ -102,10 +105,12 @@ pub async fn handle_register(
                         .await;
                     send_register_200_ok(msg, src, transport, granted_expires).await;
                 } else {
-                    warn!(
+                    let log_msg = format!(
                         "Digest Auth FAILED for Ext {} from {}",
                         ext.extension_number, src
                     );
+                    warn!("{}", log_msg);
+                    crate::logger::log_auth_audit(&log_msg);
                     send_simple_response(msg, StatusCode::new(403).unwrap(), src, transport).await;
                 }
             }

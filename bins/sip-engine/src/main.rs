@@ -2,6 +2,7 @@ mod api;
 mod b2bua;
 mod config;
 mod db;
+pub mod logger;
 mod sbc;
 mod sip_handler;
 
@@ -9,6 +10,7 @@ use api::{create_rest_router, AppState};
 use b2bua::CallManager;
 use config::Config;
 use db::DbStore;
+use logger::init_separate_loggers;
 use sbc::SbcPipeline;
 use sipstack::UdpTransport;
 use std::net::SocketAddr;
@@ -17,8 +19,8 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Setup file appender logging to logs/rustpbx.log
-    std::fs::create_dir_all("logs")?;
+    // Initialize dedicated separate loggers (sip_messages.log, auth_audit.log, system.log)
+    init_separate_loggers()?;
     let file_appender = tracing_appender::rolling::never("logs", "rustpbx.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
