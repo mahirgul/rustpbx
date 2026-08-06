@@ -1,4 +1,6 @@
+use bytes::Bytes;
 use sipcore::services::digest::DigestAuth;
+use sipcore::types::header::Header;
 use sipcore::types::header_name::HeaderName;
 use sipcore::types::headers::Headers;
 use sipcore::types::message::{SipMessage, StartLine};
@@ -12,7 +14,17 @@ pub fn extract_base_headers(request: &SipMessage) -> Headers {
         headers.push(from.clone());
     }
     if let Some(to) = request.headers.get(&HeaderName::To) {
-        headers.push(to.clone());
+        let to_str = String::from_utf8_lossy(&to.raw_value);
+        if !to_str.contains("tag=") {
+            // Append local To tag parameter for dialog response RFC 3261 §8.2.6.2
+            let tag_val = format!("{};tag={:x}", to_str, uuid_simple());
+            headers.push(Header {
+                name: HeaderName::To,
+                raw_value: Bytes::from(tag_val),
+            });
+        } else {
+            headers.push(to.clone());
+        }
     }
     if let Some(call_id) = request.headers.get(&HeaderName::CallId) {
         headers.push(call_id.clone());
@@ -66,7 +78,7 @@ pub fn extract_user_from_sip_str(input: &str) -> Option<String> {
     None
 }
 
-pub fn verify_digest_header(header: &str, password: &str, realm: &str) -> bool {
+pub fn verify_digest_header(header: &str, password: &str, realm: &str, method: &str) -> bool {
     let mut username = "";
     let mut nonce = "";
     let mut uri = "";
@@ -90,7 +102,7 @@ pub fn verify_digest_header(header: &str, password: &str, realm: &str) -> bool {
         return false;
     }
 
-    DigestAuth::verify(username, realm, password, nonce, "REGISTER", uri, response)
+    DigestAuth::verify(username, realm, password, nonce, method, uri, response)
 }
 
 pub fn uuid_simple() -> u128 {

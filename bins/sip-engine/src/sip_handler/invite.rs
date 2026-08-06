@@ -43,7 +43,12 @@ pub async fn handle_invite(
             if !caller_user.is_empty() {
                 if let Ok(exts) = db.load_extensions().await {
                     if let Some(ext) = exts.iter().find(|e| e.extension_number == caller_user) {
-                        if !verify_digest_header(&header_str, &ext.password, &cfg.sip.domain) {
+                        if !verify_digest_header(
+                            &header_str,
+                            &ext.password,
+                            &cfg.sip.domain,
+                            "INVITE",
+                        ) {
                             warn!("INVITE Digest Auth FAILED for caller {}", caller_user);
                             send_simple_response(
                                 msg,

@@ -73,7 +73,8 @@ pub async fn handle_register(
             }
             Some(header) => {
                 let header_str = String::from_utf8_lossy(&header.raw_value);
-                let is_valid = verify_digest_header(&header_str, &ext.password, &cfg.sip.domain);
+                let is_valid =
+                    verify_digest_header(&header_str, &ext.password, &cfg.sip.domain, "REGISTER");
 
                 if is_valid {
                     process_registration_grant(msg, src, transport, db, ext, req_expires).await;

@@ -48,6 +48,12 @@ pub async fn handle_incoming_sip_message(
                 Method::Cancel => {
                     handle_cancel(msg, src, transport).await;
                 }
+                Method::Ack => {
+                    info!(
+                        "Received SIP ACK from {} - No response generated per RFC 3261 §17.2.2",
+                        src
+                    );
+                }
                 _ => {
                     send_simple_response(msg, StatusCode::new(200).unwrap(), src, transport).await;
                 }
