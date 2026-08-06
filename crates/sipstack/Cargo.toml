@@ -1,0 +1,15 @@
+[package]
+name = "sipstack"
+version = "0.1.0"
+edition = "2021"
+description = "Async SIP transport, transaction, and dialog stack using tokio"
+
+[dependencies]
+sipcore = { workspace = true }
+sdpcore = { workspace = true }
+tokio = { workspace = true }
+bytes = { workspace = true }
+dashmap = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }

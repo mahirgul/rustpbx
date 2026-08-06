@@ -1,0 +1,65 @@
+mod api;
+mod b2bua;
+mod config;
+mod sbc;
+
+use api::{create_rest_router, AppState};
+use b2bua::CallManager;
+use config::Config;
+use sbc::SbcPipeline;
+use sipstack::UdpTransport;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tracing::info;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
+
+    let cfg = Config::default();
+    let sip_addr: SocketAddr = cfg.sip.udp_bind_addr.parse()?;
+    let http_addr: SocketAddr = cfg.api.http_bind_addr.parse()?;
+
+    info!("Starting RustPBX Core SIP Engine...");
+    info!("SIP UDP Transport listening on {}", sip_addr);
+    info!("HTTP REST Control API listening on http://{}", http_addr);
+
+    let call_manager = Arc::new(CallManager::new());
+    let _sbc_pipeline = SbcPipeline::default();
+
+    // Spawn SIP UDP Transport Listener
+    let sip_transport = Arc::new(UdpTransport::bind(sip_addr).await?);
+    let _sip_transport_task = tokio::spawn(async move {
+        loop {
+            match sip_transport.recv_message().await {
+                Ok((msg, src)) => {
+                    info!(
+                        "Received SIP message from {}: {} {}",
+                        src,
+                        msg.start_line,
+                        msg.headers.len()
+                    );
+                }
+                Err(e) => {
+                    tracing::error!("SIP recv error: {}", e);
+                }
+            }
+        }
+    });
+
+    // Spawn REST API HTTP Server
+    let app_state = Arc::new(AppState {
+        call_manager: call_manager.clone(),
+    });
+    let router = create_rest_router(app_state);
+
+    let listener = tokio::net::TcpListener::bind(http_addr).await?;
+    axum::serve(listener, router).await?;
+
+    Ok(())
+}

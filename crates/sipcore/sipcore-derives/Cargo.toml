@@ -1,0 +1,10 @@
+[package]
+name = "sipcore-derives"
+version = "0.1.0"
+edition = "2021"
+description = "Procedural macros for sipcore typed headers"
+
+[lib]
+proc-macro = true
+
+[dependencies]

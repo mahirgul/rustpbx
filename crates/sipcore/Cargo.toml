@@ -1,0 +1,14 @@
+[package]
+name = "sipcore"
+version = "0.1.0"
+edition = "2021"
+description = "Pure Rust zero-I/O SIP parser and types library (WASM compatible)"
+
+[dependencies]
+bytes = { workspace = true }
+nom = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+smallvec = { workspace = true }
+
+[dev-dependencies]

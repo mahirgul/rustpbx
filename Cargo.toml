@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/sipcore",
+    "crates/sipcore/sipcore-derives",
+    "crates/sdpcore",
+    "crates/sipstack",
+    "crates/pbx-proto",
+    "bins/sip-engine",
+    "bins/media-node",
+]
+
+[workspace.dependencies]
+# Async & Networking
+tokio = { version = "1.38", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+bytes = "1.6"
+futures-util = "0.3"
+async-trait = "0.1"
+dashmap = "6.0"
+smallvec = "1.13"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Parsing & Serialization
+nom = "7.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+thiserror = "1.0"
+
+# Web & gRPC
+axum = { version = "0.7", features = ["ws", "macros"] }
+tonic = "0.12"
+prost = "0.13"
+
+# Internal crates
+sipcore = { path = "crates/sipcore" }
+sdpcore = { path = "crates/sdpcore" }
+sipstack = { path = "crates/sipstack" }
+pbx-proto = { path = "crates/pbx-proto" }

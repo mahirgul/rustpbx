@@ -1,0 +1,18 @@
+[package]
+name = "media-node"
+version = "0.1.0"
+edition = "2021"
+description = "RTP Processing, Audio Relay, Recording and gRPC service for RustPBX"
+
+[dependencies]
+pbx-proto = { workspace = true }
+sdpcore = { workspace = true }
+tokio = { workspace = true }
+bytes = { workspace = true }
+dashmap = { workspace = true }
+tonic = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+thiserror = { workspace = true }

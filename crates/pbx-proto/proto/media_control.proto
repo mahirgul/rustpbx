@@ -1,0 +1,41 @@
+syntax = "proto3";
+package pbx.media;
+
+service MediaControl {
+  rpc AllocateSession (AllocateSessionRequest) returns (AllocateSessionResponse);
+  rpc ReleaseSession (ReleaseSessionRequest) returns (ReleaseSessionResponse);
+  rpc StartRecording (StartRecordingRequest) returns (StartRecordingResponse);
+}
+
+message AllocateSessionRequest {
+  string call_id = 1;
+  string remote_ip = 2;
+  uint32 remote_port = 3;
+  string codec = 4;
+}
+
+message AllocateSessionResponse {
+  string session_id = 1;
+  string local_ip = 2;
+  uint32 local_port = 3;
+  bool success = 4;
+}
+
+message ReleaseSessionRequest {
+  string session_id = 1;
+}
+
+message ReleaseSessionResponse {
+  bool success = 1;
+}
+
+message StartRecordingRequest {
+  string session_id = 1;
+  string format = 2; // wav, opus, mp3, gsm
+  string file_path = 3;
+}
+
+message StartRecordingResponse {
+  bool success = 1;
+  string message = 2;
+}

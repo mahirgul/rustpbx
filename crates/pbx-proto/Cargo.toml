@@ -1,0 +1,14 @@
+[package]
+name = "pbx-proto"
+version = "0.1.0"
+edition = "2021"
+description = "Protobuf definitions and Tonic gRPC code for RustPBX inter-process communication"
+
+[dependencies]
+tonic = { workspace = true }
+prost = { workspace = true }
+
+[build-dependencies]
+tonic-build = "0.12"
+protoc-bin-vendored = "3.0"
+
