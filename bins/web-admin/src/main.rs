@@ -23,9 +23,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = Config::default();
     let http_addr: SocketAddr = cfg.server.http_bind_addr.parse()?;
 
-    info!("Starting RustPBX Web Admin Interface...");
-    info!("Web Admin Dashboard listening at http://{}", http_addr);
-
     // Connect to shared SQLite database
     let options = SqliteConnectOptions::from_str(&cfg.database.db_path)?
         .create_if_missing(true)
@@ -37,6 +34,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .connect_with(options)
             .await?,
     );
+
+    // Initialize database schema and auto-migrate missing columns
+    let schema_sql = include_str!("../../../data/schema.sql");
+    sqlx::query(schema_sql).execute(pool.as_ref()).await?;
+
+    let _ = sqlx::query(
+        "ALTER TABLE extensions ADD COLUMN qualify_frequency INTEGER NOT NULL DEFAULT 60",
+    )
+    .execute(pool.as_ref())
+    .await;
+    let _ = sqlx::query("ALTER TABLE extensions ADD COLUMN nat_mode TEXT NOT NULL DEFAULT 'auto'")
+        .execute(pool.as_ref())
+        .await;
+    let _ =
+        sqlx::query("ALTER TABLE extensions ADD COLUMN min_expires INTEGER NOT NULL DEFAULT 60")
+            .execute(pool.as_ref())
+            .await;
+    let _ =
+        sqlx::query("ALTER TABLE extensions ADD COLUMN max_expires INTEGER NOT NULL DEFAULT 3600")
+            .execute(pool.as_ref())
+            .await;
+    let _ =
+        sqlx::query("ALTER TABLE extensions ADD COLUMN auth_required INTEGER NOT NULL DEFAULT 1")
+            .execute(pool.as_ref())
+            .await;
+    let _ = sqlx::query(
+        "ALTER TABLE extensions ADD COLUMN max_concurrent_logins INTEGER NOT NULL DEFAULT 1",
+    )
+    .execute(pool.as_ref())
+    .await;
+    let _ = sqlx::query("ALTER TABLE extensions ADD COLUMN allowed_transport TEXT NOT NULL DEFAULT 'udp,tcp,tls,ws'").execute(pool.as_ref()).await;
+
+    info!("Starting RustPBX Web Admin Interface...");
+    info!("Web Admin Dashboard listening at http://{}", http_addr);
 
     let app = create_api_router(pool).fallback(static_handler);
 

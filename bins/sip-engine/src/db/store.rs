@@ -54,6 +54,38 @@ impl DbStore {
         let schema_sql = include_str!("../../../../data/schema.sql");
         sqlx::query(schema_sql).execute(&pool).await?;
 
+        // Ensure missing columns exist in existing SQLite database file (Auto-migration)
+        let _ = sqlx::query(
+            "ALTER TABLE extensions ADD COLUMN qualify_frequency INTEGER NOT NULL DEFAULT 60",
+        )
+        .execute(&pool)
+        .await;
+        let _ =
+            sqlx::query("ALTER TABLE extensions ADD COLUMN nat_mode TEXT NOT NULL DEFAULT 'auto'")
+                .execute(&pool)
+                .await;
+        let _ = sqlx::query(
+            "ALTER TABLE extensions ADD COLUMN min_expires INTEGER NOT NULL DEFAULT 60",
+        )
+        .execute(&pool)
+        .await;
+        let _ = sqlx::query(
+            "ALTER TABLE extensions ADD COLUMN max_expires INTEGER NOT NULL DEFAULT 3600",
+        )
+        .execute(&pool)
+        .await;
+        let _ = sqlx::query(
+            "ALTER TABLE extensions ADD COLUMN auth_required INTEGER NOT NULL DEFAULT 1",
+        )
+        .execute(&pool)
+        .await;
+        let _ = sqlx::query(
+            "ALTER TABLE extensions ADD COLUMN max_concurrent_logins INTEGER NOT NULL DEFAULT 1",
+        )
+        .execute(&pool)
+        .await;
+        let _ = sqlx::query("ALTER TABLE extensions ADD COLUMN allowed_transport TEXT NOT NULL DEFAULT 'udp,tcp,tls,ws'").execute(&pool).await;
+
         info!("SQLite database schema verified and sample extensions seeded");
 
         Ok(DbStore { pool })
