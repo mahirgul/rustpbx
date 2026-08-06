@@ -3,6 +3,7 @@ mod b2bua;
 mod config;
 mod db;
 mod sbc;
+mod sip_handler;
 
 use api::{create_rest_router, AppState};
 use b2bua::CallManager;
@@ -49,16 +50,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Spawn SIP UDP Transport Listener
     let sip_transport = Arc::new(UdpTransport::bind(sip_addr).await?);
+    let sip_transport_listener = sip_transport.clone();
+    let db_store_listener = db_store.clone();
     let _sip_transport_task = tokio::spawn(async move {
         loop {
-            match sip_transport.recv_message().await {
+            match sip_transport_listener.recv_message().await {
                 Ok((msg, src)) => {
-                    info!(
-                        "Received SIP message from {}: {} {}",
+                    sip_handler::handle_incoming_sip_message(
+                        msg,
                         src,
-                        msg.start_line,
-                        msg.headers.len()
-                    );
+                        &sip_transport_listener,
+                        &db_store_listener,
+                    )
+                    .await;
                 }
                 Err(e) => {
                     tracing::error!("SIP recv error: {}", e);

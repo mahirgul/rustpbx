@@ -21,12 +21,13 @@ impl Extension {
     }
 }
 
+#[derive(Clone)]
 pub struct DbStore {
     pool: Pool<Sqlite>,
 }
 
 impl DbStore {
-    pub async fn init(db_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn init(db_path: &str) -> Result<Self, sqlx::Error> {
         info!("Initializing SQLite database (WAL Mode) at {}", db_path);
 
         let options = SqliteConnectOptions::from_str(db_path)?
@@ -47,7 +48,7 @@ impl DbStore {
         Ok(DbStore { pool })
     }
 
-    pub async fn load_extensions(&self) -> Result<Vec<Extension>, Box<dyn std::error::Error>> {
+    pub async fn load_extensions(&self) -> Result<Vec<Extension>, sqlx::Error> {
         let extensions = sqlx::query_as::<_, Extension>(
             r#"
             SELECT id, extension_number, password, display_name, email, record_calls, is_active
