@@ -148,6 +148,46 @@ impl DbStore {
 
         Ok(())
     }
+
+    pub async fn get_active_registration(
+        &self,
+        ext_num: &str,
+    ) -> Result<Option<SipRegistration>, sqlx::Error> {
+        let now = current_unix_secs();
+        let reg = sqlx::query_as::<_, SipRegistration>(
+            r#"
+            SELECT extension_number, user_agent, contact_uri, source_ip, source_port, CAST(expires_at AS INTEGER) as expires_at
+            FROM sip_registrations
+            WHERE extension_number = ? AND CAST(expires_at AS INTEGER) > ?
+            "#,
+        )
+        .bind(ext_num)
+        .bind(now)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(reg)
+    }
+
+    pub async fn delete_registration(&self, ext_num: &str) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM sip_registrations WHERE extension_number = ?")
+            .bind(ext_num)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, FromRow)]
+#[allow(dead_code)]
+pub struct SipRegistration {
+    pub extension_number: String,
+    pub user_agent: Option<String>,
+    pub contact_uri: String,
+    pub source_ip: String,
+    pub source_port: i64,
+    pub expires_at: i64,
 }
 
 fn current_unix_secs() -> i64 {

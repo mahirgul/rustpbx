@@ -56,6 +56,9 @@ pub async fn handle_register(
         }
     };
 
+    // Extract requested expires duration (RFC 3261 §10.2)
+    let req_expires = extract_requested_expires(&msg);
+
     // Check if Digest Auth is enabled (globally AND for this specific extension)
     if cfg.sip.require_digest_auth && ext.is_auth_required() {
         let auth_header = msg.headers.get(&HeaderName::Authorization);
@@ -73,37 +76,7 @@ pub async fn handle_register(
                 let is_valid = verify_digest_header(&header_str, &ext.password, &cfg.sip.domain);
 
                 if is_valid {
-                    let log_msg = format!(
-                        "Digest Auth SUCCESS for Ext {} from {}",
-                        ext.extension_number, src
-                    );
-                    info!("{}", log_msg);
-                    crate::logger::log_auth_audit(&log_msg);
-
-                    let ua = msg
-                        .headers
-                        .get(&HeaderName::UserAgent)
-                        .map(|h| String::from_utf8_lossy(&h.raw_value).to_string());
-                    let contact = msg
-                        .headers
-                        .get(&HeaderName::Contact)
-                        .map(|h| String::from_utf8_lossy(&h.raw_value).to_string())
-                        .unwrap_or_else(|| src.to_string());
-
-                    // Enforce extension's min/max expires limits
-                    let granted_expires = ext.max_expires.clamp(ext.min_expires, 86400);
-
-                    let _ = db
-                        .upsert_registration(
-                            &ext.extension_number,
-                            ua.as_deref(),
-                            &contact,
-                            &src.ip().to_string(),
-                            src.port() as i32,
-                            granted_expires,
-                        )
-                        .await;
-                    send_register_200_ok(msg, src, transport, granted_expires).await;
+                    process_registration_grant(msg, src, transport, db, ext, req_expires).await;
                 } else {
                     let log_msg = format!(
                         "Digest Auth FAILED for Ext {} from {}",
@@ -116,11 +89,83 @@ pub async fn handle_register(
             }
         }
     } else {
-        info!(
-            "Digest Auth disabled for Ext {}. Granting 200 OK from {}",
+        process_registration_grant(msg, src, transport, db, ext, req_expires).await;
+    }
+}
+
+async fn process_registration_grant(
+    msg: SipMessage,
+    src: SocketAddr,
+    transport: &Arc<UdpTransport>,
+    db: &DbStore,
+    ext: &crate::db::Extension,
+    req_expires: Option<i64>,
+) {
+    // If client requested 0 seconds, unregister/logout extension (RFC 3261 §10.2.2)
+    if req_expires == Some(0) {
+        let log_msg = format!(
+            "Ext {} UNREGISTERED (Expires: 0) from {}",
             ext.extension_number, src
         );
-        let granted_expires = ext.max_expires.clamp(ext.min_expires, 86400);
-        send_register_200_ok(msg, src, transport, granted_expires).await;
+        info!("{}", log_msg);
+        crate::logger::log_auth_audit(&log_msg);
+
+        let _ = db.delete_registration(&ext.extension_number).await;
+        send_register_200_ok(msg, src, transport, 0).await;
+        return;
     }
+
+    let granted_expires = req_expires
+        .unwrap_or(ext.max_expires)
+        .clamp(ext.min_expires, ext.max_expires);
+
+    let log_msg = format!(
+        "Digest Auth SUCCESS for Ext {} from {} (Granted Expires: {})",
+        ext.extension_number, src, granted_expires
+    );
+    info!("{}", log_msg);
+    crate::logger::log_auth_audit(&log_msg);
+
+    let ua = msg
+        .headers
+        .get(&HeaderName::UserAgent)
+        .map(|h| String::from_utf8_lossy(&h.raw_value).to_string());
+    let contact = msg
+        .headers
+        .get(&HeaderName::Contact)
+        .map(|h| String::from_utf8_lossy(&h.raw_value).to_string())
+        .unwrap_or_else(|| src.to_string());
+
+    let _ = db
+        .upsert_registration(
+            &ext.extension_number,
+            ua.as_deref(),
+            &contact,
+            &src.ip().to_string(),
+            src.port() as i32,
+            granted_expires,
+        )
+        .await;
+
+    send_register_200_ok(msg, src, transport, granted_expires).await;
+}
+
+fn extract_requested_expires(msg: &SipMessage) -> Option<i64> {
+    if let Some(exp_header) = msg.headers.get(&HeaderName::Expires) {
+        let val_str = String::from_utf8_lossy(&exp_header.raw_value);
+        if let Ok(val) = val_str.trim().parse::<i64>() {
+            return Some(val);
+        }
+    }
+    if let Some(contact) = msg.headers.get(&HeaderName::Contact) {
+        let c_str = String::from_utf8_lossy(&contact.raw_value);
+        if let Some(pos) = c_str.find("expires=") {
+            let rest = &c_str[pos + 8..];
+            let num_str: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+            if let Ok(val) = num_str.parse::<i64>() {
+                return Some(val);
+            }
+        }
+    }
+    None
 }

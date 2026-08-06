@@ -64,12 +64,32 @@ pub async fn handle_invite(
         }
     }
 
-    // 4. Send 180 Ringing to caller
-    send_simple_response(msg.clone(), StatusCode::new(180).unwrap(), src, transport).await;
-    info!(
-        "INVITE call routed to target extension {} from {}",
-        target_user, src
-    );
+    // 4. Query Callee Registration Status & Forward INVITE
+    match db.get_active_registration(&target_user).await {
+        Ok(Some(reg)) => {
+            let target_addr: Result<SocketAddr, _> =
+                format!("{}:{}", reg.source_ip, reg.source_port).parse();
+            if let Ok(dest_sock) = target_addr {
+                info!(
+                    "Forwarding INVITE for Ext {} to registered target endpoint {}",
+                    target_user, dest_sock
+                );
+                let _ = transport.send_to(&msg, dest_sock).await;
+                send_simple_response(msg.clone(), StatusCode::new(180).unwrap(), src, transport)
+                    .await;
+            } else {
+                warn!("Invalid SocketAddr for callee Ext {}", target_user);
+                send_simple_response(msg, StatusCode::new(480).unwrap(), src, transport).await;
+            }
+        }
+        _ => {
+            warn!(
+                "Callee extension {} is offline or not registered",
+                target_user
+            );
+            send_simple_response(msg, StatusCode::new(480).unwrap(), src, transport).await;
+        }
+    }
 }
 
 pub async fn handle_bye(msg: SipMessage, src: SocketAddr, transport: &Arc<UdpTransport>) {
