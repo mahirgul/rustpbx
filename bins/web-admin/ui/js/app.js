@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </td>
                                 <td>${ext.record_calls == 1 ? '🔴 Enabled' : '⚪ Disabled'}</td>
                                 <td>
-                                    <button class="btn btn-sm btn-edit" data-id="${ext.id}" data-number="${ext.extension_number}" data-name="${ext.display_name}" data-email="${ext.email || ''}" data-recording="${ext.record_calls}">✏️ Edit</button>
+                                    <button class="btn btn-sm btn-edit" data-ext='${JSON.stringify(ext).replace(/'/g, "&apos;")}'>✏️ Edit</button>
                                     <button class="btn btn-sm btn-danger btn-delete" data-id="${ext.id}" data-number="${ext.extension_number}">🗑️ Delete</button>
                                 </td>
                             </tr>
@@ -130,13 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.querySelectorAll('.btn-edit').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    openExtensionModal({
-                        id: btn.dataset.id,
-                        number: btn.dataset.number,
-                        name: btn.dataset.name,
-                        email: btn.dataset.email,
-                        recording: btn.dataset.recording == 1
-                    });
+                    const ext = JSON.parse(btn.dataset.ext);
+                    openExtensionModal(ext);
                 });
             });
 
@@ -156,125 +151,114 @@ document.addEventListener('DOMContentLoaded', () => {
     function openExtensionModal(ext = null) {
         const isEdit = !!ext;
         modalContainer.innerHTML = `
-            <div class="modal-backdrop">
-                <div class="modal">
-                    <h2>${isEdit ? 'Edit Extension ' + ext.number : 'Add New Extension'}</h2>
-                    <form id="ext-form">
-                        ${!isEdit ? `
-                        <div class="form-group">
-                            <label>Extension Number</label>
-                            <input type="text" id="ext-number" class="form-control" required placeholder="e.g. 300">
-                        </div>` : ''}
-                        <div class="form-group">
-                            <label>Display Name</label>
-                            <input type="text" id="ext-name" class="form-control" value="${ext ? ext.name : ''}" required placeholder="e.g. Carol">
-                        </div>
-                        <div class="form-group">
-                            <label>Password</label>
-                            <input type="password" id="ext-password" class="form-control" placeholder="${isEdit ? 'Leave blank to keep unchanged' : 'Secret Password'}" ${!isEdit ? 'required' : ''}>
-                        </div>
-                        <div class="form-group">
-                <div id="extModal" class="modal">
-                    <div class="modal-content">
-                        <span class="close-modal" id="closeModal">&times;</span>
-                        <h2 id="modalTitle">Add New Extension</h2>
-                        <form id="extForm">
-                            <input type="hidden" id="editExtId" value="">
-                            
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>Extension Number *</label>
-                                    <input type="text" id="extNum" required placeholder="e.g. 101">
-                                </div>
-                                <div class="form-group">
-                                    <label>Password *</label>
-                                    <input type="password" id="extPass" required placeholder="SIP Password">
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>Display Name *</label>
-                                    <input type="text" id="extName" required placeholder="e.g. Alice Smith">
-                                </div>
-                                <div class="form-group">
-                                    <label>Email Address</label>
-                                    <input type="email" id="extEmail" placeholder="user@company.com">
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>NAT Mode</label>
-                                    <select id="extNat">
-                                        <option value="auto">Auto (Detect rport)</option>
-                                        <option value="force_rport">Force rport</option>
-                                        <option value="stun">STUN Traversal</option>
-                                        <option value="disabled">Disabled (LAN only)</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>OPTIONS Ping (sec)</label>
-                                    <input type="number" id="extQualify" value="60" min="0" max="3600" title="0 to disable active ping">
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>Min Expires (sec)</label>
-                                    <input type="number" id="extMinExpires" value="60" min="10">
-                                </div>
-                                <div class="form-group">
-                                    <label>Max Expires (sec)</label>
-                                    <input type="number" id="extMaxExpires" value="3600" max="86400">
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>Max Concurrent Logins</label>
-                                    <input type="number" id="extMaxLogins" value="1" min="1" max="10">
-                                </div>
-                                <div class="form-group">
-                                    <label>Allowed Transports</label>
-                                    <input type="text" id="extTransports" value="udp,tcp,tls,ws" placeholder="udp,tcp,tls,ws">
-                                </div>
-                            </div>
-
-                            <div style="display: flex; gap: 1.5rem; margin-top: 1rem;">
-                                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="checkbox" id="extRecord" style="width: auto;">
-                                    <label for="extRecord" style="margin: 0;">Record Calls</label>
-                                </div>
-                                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="checkbox" id="extAuth" checked style="width: auto;">
-                                    <label for="extAuth" style="margin: 0;">Require Digest Auth</label>
-                                </div>
-                            </div>
-
-                            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
-                                <button type="button" class="btn" id="cancelModal" style="background: var(--surface-light);">Cancel</button>
-                                <button type="submit" class="btn btn-primary" id="saveExtBtn">Save Extension</button>
-                            </div>
-                        </form>
+            <div class="modal-backdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+                <div class="modal" style="background: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2>${isEdit ? 'Edit Extension ' + ext.extension_number : 'Add New Extension'}</h2>
+                        <button id="closeModal" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
                     </div>
+                    <form id="extForm">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Extension Number *</label>
+                                <input type="text" id="extNum" class="form-control" value="${ext ? ext.extension_number : ''}" ${isEdit ? 'disabled' : 'required'} placeholder="e.g. 101">
+                            </div>
+                            <div class="form-group">
+                                <label>Password ${isEdit ? '(Optional)' : '*'}</label>
+                                <input type="password" id="extPass" class="form-control" ${!isEdit ? 'required' : ''} placeholder="${isEdit ? 'Leave blank to keep unchanged' : 'SIP Password'}">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Display Name *</label>
+                                <input type="text" id="extName" class="form-control" value="${ext ? ext.display_name : ''}" required placeholder="e.g. Alice Smith">
+                            </div>
+                            <div class="form-group">
+                                <label>Email Address</label>
+                                <input type="email" id="extEmail" class="form-control" value="${ext && ext.email ? ext.email : ''}" placeholder="user@company.com">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>NAT Mode</label>
+                                <select id="extNat" class="form-control">
+                                    <option value="auto" ${ext && ext.nat_mode === 'auto' ? 'selected' : ''}>Auto (Detect rport)</option>
+                                    <option value="force_rport" ${ext && ext.nat_mode === 'force_rport' ? 'selected' : ''}>Force rport</option>
+                                    <option value="stun" ${ext && ext.nat_mode === 'stun' ? 'selected' : ''}>STUN Traversal</option>
+                                    <option value="disabled" ${ext && ext.nat_mode === 'disabled' ? 'selected' : ''}>Disabled (LAN only)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>OPTIONS Ping (sec)</label>
+                                <input type="number" id="extQualify" class="form-control" value="${ext ? ext.qualify_frequency : 60}" min="0" max="3600">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Min Expires (sec)</label>
+                                <input type="number" id="extMinExpires" class="form-control" value="${ext ? ext.min_expires : 60}" min="10">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Expires (sec)</label>
+                                <input type="number" id="extMaxExpires" class="form-control" value="${ext ? ext.max_expires : 3600}" max="86400">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Max Concurrent Logins</label>
+                                <input type="number" id="extMaxLogins" class="form-control" value="${ext ? ext.max_concurrent_logins : 1}" min="1" max="10">
+                            </div>
+                            <div class="form-group">
+                                <label>Allowed Transports</label>
+                                <input type="text" id="extTransports" class="form-control" value="${ext ? ext.allowed_transport : 'udp,tcp,tls,ws'}">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 1.5rem; margin-top: 1rem;">
+                            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="extRecord" ${ext && ext.record_calls == 1 ? 'checked' : ''} style="width: auto;">
+                                <label for="extRecord" style="margin: 0;">Record Calls</label>
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="extAuth" ${!ext || ext.auth_required == 1 ? 'checked' : ''} style="width: auto;">
+                                <label for="extAuth" style="margin: 0;">Require Digest Auth</label>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem;">
+                            <button type="button" class="btn" id="cancelModal" style="background: var(--surface-light);">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="saveExtBtn">${isEdit ? 'Update Extension' : 'Create Extension'}</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         `;
         modalContainer.style.display = 'block';
 
-        document.getElementById('btn-cancel').addEventListener('click', () => {
-            modalContainer.style.display = 'none';
-        });
+        const closeModal = () => { modalContainer.style.display = 'none'; };
+        document.getElementById('closeModal').addEventListener('click', closeModal);
+        document.getElementById('cancelModal').addEventListener('click', closeModal);
 
-        document.getElementById('ext-form').addEventListener('submit', async (e) => {
+        document.getElementById('extForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const payload = {
-                display_name: document.getElementById('ext-name').value,
-                email: document.getElementById('ext-email').value,
-                record_calls: document.getElementById('ext-recording').checked
+                display_name: document.getElementById('extName').value,
+                email: document.getElementById('extEmail').value || null,
+                record_calls: document.getElementById('extRecord').checked,
+                nat_mode: document.getElementById('extNat').value,
+                qualify_frequency: parseInt(document.getElementById('extQualify').value) || 60,
+                min_expires: parseInt(document.getElementById('extMinExpires').value) || 60,
+                max_expires: parseInt(document.getElementById('extMaxExpires').value) || 3600,
+                max_concurrent_logins: parseInt(document.getElementById('extMaxLogins').value) || 1,
+                allowed_transport: document.getElementById('extTransports').value || 'udp,tcp,tls,ws',
+                auth_required: document.getElementById('extAuth').checked
             };
-            const pass = document.getElementById('ext-password').value;
+            
+            const pass = document.getElementById('extPass').value;
             if (pass) payload.password = pass;
 
             if (isEdit) {
@@ -284,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify(payload)
                 });
             } else {
-                payload.extension_number = document.getElementById('ext-number').value;
+                payload.extension_number = document.getElementById('extNum').value;
                 await fetch('/api/v1/extensions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
