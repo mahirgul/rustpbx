@@ -14,15 +14,32 @@ use crate::rtp::RtpRelaySession;
 pub struct MediaControlService {
     pub sessions: Arc<DashMap<String, Arc<RtpRelaySession>>>,
     pub bind_ip: String,
+    pub start_port: u16,
+    pub end_port: u16,
     pub next_port: Arc<std::sync::atomic::AtomicU16>,
 }
 
 impl MediaControlService {
-    pub fn new(bind_ip: String, start_port: u16) -> Self {
+    pub fn new(bind_ip: String, start_port: u16, end_port: u16) -> Self {
         MediaControlService {
             sessions: Arc::new(DashMap::new()),
             bind_ip,
+            start_port,
+            end_port,
             next_port: Arc::new(std::sync::atomic::AtomicU16::new(start_port)),
+        }
+    }
+
+    fn get_next_port(&self) -> u16 {
+        let current = self
+            .next_port
+            .fetch_add(2, std::sync::atomic::Ordering::SeqCst);
+        if current >= self.end_port {
+            self.next_port
+                .store(self.start_port, std::sync::atomic::Ordering::SeqCst);
+            self.start_port
+        } else {
+            current
         }
     }
 }
@@ -34,9 +51,7 @@ impl MediaControl for MediaControlService {
         request: Request<AllocateSessionRequest>,
     ) -> Result<Response<AllocateSessionResponse>, Status> {
         let req = request.into_inner();
-        let port = self
-            .next_port
-            .fetch_add(2, std::sync::atomic::Ordering::SeqCst);
+        let port = self.get_next_port();
 
         let session_id = format!("sess-{}", req.call_id);
         info!(

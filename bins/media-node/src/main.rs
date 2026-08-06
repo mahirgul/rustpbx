@@ -24,7 +24,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting RustPBX Media Node process...");
     info!("gRPC MediaControl Server listening on {}", grpc_addr);
 
-    let service = MediaControlService::new(cfg.rtp.bind_ip, cfg.rtp.port_range_start);
+    let service = MediaControlService::new(
+        cfg.rtp.bind_ip,
+        cfg.rtp.port_range_start,
+        cfg.rtp.port_range_end,
+    );
 
     Server::builder()
         .add_service(MediaControlServer::new(service))
