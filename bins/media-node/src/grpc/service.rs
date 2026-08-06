@@ -44,9 +44,15 @@ impl MediaControl for MediaControlService {
             session_id, req.call_id, port
         );
 
-        let session = RtpRelaySession::bind(session_id.clone(), &self.bind_ip, port)
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?;
+        let session = RtpRelaySession::bind(
+            session_id.clone(),
+            &self.bind_ip,
+            port,
+            &req.remote_ip,
+            req.remote_port as u16,
+        )
+        .await
+        .map_err(|e| Status::internal(e.to_string()))?;
 
         self.sessions.insert(session_id.clone(), Arc::new(session));
 
@@ -64,7 +70,12 @@ impl MediaControl for MediaControlService {
     ) -> Result<Response<ReleaseSessionResponse>, Status> {
         let req = request.into_inner();
         info!("Releasing media session {}", req.session_id);
-        let removed = self.sessions.remove(&req.session_id).is_some();
+        let removed = if let Some((_, session)) = self.sessions.remove(&req.session_id) {
+            session.stop();
+            true
+        } else {
+            false
+        };
         Ok(Response::new(ReleaseSessionResponse { success: removed }))
     }
 

@@ -35,6 +35,15 @@ pub async fn handle_incoming_sip_message(
                 Method::Options => {
                     handle_options(msg, src, transport).await;
                 }
+                Method::Invite => {
+                    handle_invite(msg, src, transport, db, cfg).await;
+                }
+                Method::Bye => {
+                    handle_bye(msg, src, transport).await;
+                }
+                Method::Cancel => {
+                    handle_cancel(msg, src, transport).await;
+                }
                 _ => {
                     send_simple_response(msg, StatusCode::new(200).unwrap(), src, transport).await;
                 }
@@ -158,7 +167,100 @@ async fn handle_register(
 }
 
 async fn handle_options(msg: SipMessage, src: SocketAddr, transport: &Arc<UdpTransport>) {
+    let mut resp_headers = extract_base_headers(&msg);
+    resp_headers.push(Header::new(
+        HeaderName::Allow,
+        Bytes::from("INVITE, ACK, CANCEL, BYE, OPTIONS, REGISTER"),
+    ));
+    resp_headers.push(Header::new(
+        HeaderName::Accept,
+        Bytes::from("application/sdp"),
+    ));
+    resp_headers.push(Header::new(
+        HeaderName::UserAgent,
+        Bytes::from("RustPBX/0.1.0"),
+    ));
+    resp_headers.push(Header::new(HeaderName::ContentLength, Bytes::from("0")));
+
+    let status_code = StatusCode::new(200).unwrap();
+    let resp_line = ResponseLine {
+        version: Version::default(),
+        status_code,
+        reason_phrase: "OK".to_string(),
+    };
+
+    let resp_msg = SipMessage::new_response(resp_line, resp_headers, Bytes::new());
+    let _ = transport.send_to(&resp_msg, src).await;
+}
+
+async fn handle_invite(
+    msg: SipMessage,
+    src: SocketAddr,
+    transport: &Arc<UdpTransport>,
+    db: &DbStore,
+    cfg: &Config,
+) {
+    info!("Processing INVITE request from {}", src);
+
+    // 1. Send 100 Trying to caller immediately (RFC 3261 §17.2.1)
+    send_simple_response(msg.clone(), StatusCode::new(100).unwrap(), src, transport).await;
+
+    // 2. Extract destination extension number
+    let target_user = match extract_extension_user(&msg) {
+        Some(u) => u,
+        None => {
+            send_simple_response(msg, StatusCode::new(400).unwrap(), src, transport).await;
+            return;
+        }
+    };
+
+    // 3. Digest Auth Check for Caller if enabled
+    if cfg.sip.require_digest_auth {
+        if let Some(auth_header) = msg.headers.get(&HeaderName::Authorization) {
+            let header_str = String::from_utf8_lossy(&auth_header.raw_value);
+            // Verify caller identity against DB
+            let caller_user = extract_user_from_sip_str(&header_str).unwrap_or_default();
+            if !caller_user.is_empty() {
+                if let Ok(exts) = db.load_extensions().await {
+                    if let Some(ext) = exts.iter().find(|e| e.extension_number == caller_user) {
+                        if !verify_digest_header(&header_str, &ext.password, &cfg.sip.domain) {
+                            warn!("INVITE Digest Auth FAILED for caller {}", caller_user);
+                            send_simple_response(
+                                msg,
+                                StatusCode::new(403).unwrap(),
+                                src,
+                                transport,
+                            )
+                            .await;
+                            return;
+                        }
+                    }
+                }
+            }
+        } else {
+            info!("Sending 401 Digest Challenge for INVITE from {}", src);
+            send_digest_challenge(msg, &cfg.sip.domain, src, transport).await;
+            return;
+        }
+    }
+
+    // 4. Send 180 Ringing to caller
+    send_simple_response(msg.clone(), StatusCode::new(180).unwrap(), src, transport).await;
+    info!(
+        "INVITE call routed to target extension {} from {}",
+        target_user, src
+    );
+}
+
+async fn handle_bye(msg: SipMessage, src: SocketAddr, transport: &Arc<UdpTransport>) {
+    info!("Processing BYE call teardown request from {}", src);
     send_simple_response(msg, StatusCode::new(200).unwrap(), src, transport).await;
+}
+
+async fn handle_cancel(msg: SipMessage, src: SocketAddr, transport: &Arc<UdpTransport>) {
+    info!("Processing CANCEL call cancellation request from {}", src);
+    send_simple_response(msg.clone(), StatusCode::new(200).unwrap(), src, transport).await;
+    send_simple_response(msg, StatusCode::new(487).unwrap(), src, transport).await;
 }
 
 async fn send_digest_challenge(
