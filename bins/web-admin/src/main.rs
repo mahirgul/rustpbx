@@ -39,6 +39,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let schema_sql = include_str!("../../../data/schema.sql");
     sqlx::query(schema_sql).execute(pool.as_ref()).await?;
 
+    // Cleanup any historical duplicate dialplan rules
+    let _ = sqlx::query(
+        "DELETE FROM dialplan_rules WHERE id NOT IN (SELECT MIN(id) FROM dialplan_rules GROUP BY rule_name, pattern)",
+    )
+    .execute(pool.as_ref())
+    .await;
+
     let _ = sqlx::query(
         "ALTER TABLE extensions ADD COLUMN qualify_frequency INTEGER NOT NULL DEFAULT 60",
     )

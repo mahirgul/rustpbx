@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS dialplan_rules (
     destination_type TEXT NOT NULL, -- "extension", "trunk", "ivr", "queue", "voicemail"
     destination_target TEXT NOT NULL,
     priority INTEGER NOT NULL DEFAULT 1,
-    is_active INTEGER NOT NULL DEFAULT 1
+    is_active INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(rule_name, pattern)
 );
 
 -- 5. IVR Menus Table
