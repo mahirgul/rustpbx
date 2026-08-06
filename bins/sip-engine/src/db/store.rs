@@ -60,4 +60,48 @@ impl DbStore {
 
         Ok(extensions)
     }
+
+    pub async fn upsert_registration(
+        &self,
+        ext_num: &str,
+        user_agent: Option<&str>,
+        contact_uri: &str,
+        ip: &str,
+        port: i32,
+        expires_secs: i64,
+    ) -> Result<(), sqlx::Error> {
+        let expires_at = chrono_offset_secs(expires_secs);
+        sqlx::query(
+            r#"
+            INSERT INTO sip_registrations (extension_number, user_agent, contact_uri, source_ip, source_port, expires_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(extension_number) DO UPDATE SET
+                user_agent = excluded.user_agent,
+                contact_uri = excluded.contact_uri,
+                source_ip = excluded.source_ip,
+                source_port = excluded.source_port,
+                expires_at = excluded.expires_at,
+                updated_at = CURRENT_TIMESTAMP
+            "#,
+        )
+        .bind(ext_num)
+        .bind(user_agent)
+        .bind(contact_uri)
+        .bind(ip)
+        .bind(port)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+}
+
+fn chrono_offset_secs(secs: i64) -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    format!("{}", now + secs as u64)
 }

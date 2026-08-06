@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <th>Extension</th>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>SIP Status</th>
                             <th>Recording</th>
                             <th>Actions</th>
                         </tr>
@@ -109,6 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <td><strong>${ext.extension_number}</strong></td>
                                 <td>${ext.display_name}</td>
                                 <td>${ext.email || '-'}</td>
+                                <td>
+                                    <span class="badge ${ext.is_registered ? '' : 'btn-danger'}" style="${!ext.is_registered ? 'background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444;' : ''}">
+                                        ${ext.is_registered ? '🟢 Registered' : '🔴 Offline'}
+                                    </span>
+                                </td>
                                 <td>${ext.record_calls == 1 ? '🔴 Enabled' : '⚪ Disabled'}</td>
                                 <td>
                                     <button class="btn btn-sm btn-edit" data-id="${ext.id}" data-number="${ext.extension_number}" data-name="${ext.display_name}" data-email="${ext.email || ''}" data-recording="${ext.record_calls}">✏️ Edit</button>

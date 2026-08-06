@@ -114,6 +114,25 @@ async fn handle_register(
                         "Digest Auth SUCCESS for Ext {} from {}",
                         ext.extension_number, src
                     );
+                    let ua = msg
+                        .headers
+                        .get(&HeaderName::UserAgent)
+                        .map(|h| String::from_utf8_lossy(&h.raw_value).to_string());
+                    let contact = msg
+                        .headers
+                        .get(&HeaderName::Contact)
+                        .map(|h| String::from_utf8_lossy(&h.raw_value).to_string())
+                        .unwrap_or_else(|| src.to_string());
+                    let _ = db
+                        .upsert_registration(
+                            &ext.extension_number,
+                            ua.as_deref(),
+                            &contact,
+                            &src.ip().to_string(),
+                            src.port() as i32,
+                            3600,
+                        )
+                        .await;
                     send_register_200_ok(msg, src, transport).await;
                 } else {
                     warn!(

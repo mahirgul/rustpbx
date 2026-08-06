@@ -12,6 +12,7 @@ pub struct Extension {
     pub email: Option<String>,
     pub record_calls: i64,
     pub is_active: i64,
+    pub is_registered: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -26,18 +27,51 @@ pub struct CreateExtensionRequest {
 pub async fn list_extensions(
     State(pool): State<Arc<SqlitePool>>,
 ) -> Result<Json<Vec<Extension>>, StatusCode> {
-    let rows = sqlx::query_as::<_, Extension>(
+    let now_secs = format!(
+        "{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    );
+
+    let rows = sqlx::query(
         r#"
-        SELECT id, extension_number, password, display_name, email, record_calls, is_active
-        FROM extensions
-        ORDER BY extension_number ASC
+        SELECT 
+            e.id, 
+            e.extension_number, 
+            e.password, 
+            e.display_name, 
+            e.email, 
+            e.record_calls, 
+            e.is_active,
+            CASE WHEN r.extension_number IS NOT NULL AND r.expires_at > ? THEN 1 ELSE 0 END AS is_registered
+        FROM extensions e
+        LEFT JOIN sip_registrations r ON e.extension_number = r.extension_number
+        ORDER BY e.extension_number ASC
         "#,
     )
+    .bind(&now_secs)
     .fetch_all(pool.as_ref())
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(rows))
+    use sqlx::Row;
+    let extensions = rows
+        .into_iter()
+        .map(|r| Extension {
+            id: r.get("id"),
+            extension_number: r.get("extension_number"),
+            password: r.get("password"),
+            display_name: r.get("display_name"),
+            email: r.get("email"),
+            record_calls: r.get("record_calls"),
+            is_active: r.get("is_active"),
+            is_registered: r.get::<i64, _>("is_registered") == 1,
+        })
+        .collect();
+
+    Ok(Json(extensions))
 }
 
 pub async fn create_extension(

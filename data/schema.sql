@@ -45,3 +45,14 @@ VALUES ('200', '200200', 'Bob (Ext 200)', 'bob@pbx.local', 0);
 -- Seed Default Dialplan Rule for Extensions (1xx, 2xx)
 INSERT OR IGNORE INTO dialplan_rules (rule_name, pattern, destination_type, destination_target, priority)
 VALUES ('Local Extensions', '^[1-2][0-9]{2}$', 'extension', 'self', 1);
+
+-- Live Active SIP Registrations Table
+CREATE TABLE IF NOT EXISTS sip_registrations (
+    extension_number TEXT PRIMARY KEY,
+    user_agent TEXT,
+    contact_uri TEXT NOT NULL,
+    source_ip TEXT NOT NULL,
+    source_port INTEGER NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
