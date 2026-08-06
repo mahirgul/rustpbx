@@ -20,6 +20,7 @@ pub struct DatabaseConfig {
 pub struct SipConfig {
     pub udp_bind_addr: String,
     pub domain: String,
+    pub require_digest_auth: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -41,6 +42,7 @@ impl Default for Config {
             sip: SipConfig {
                 udp_bind_addr: "0.0.0.0:5060".to_string(),
                 domain: "pbx.local".to_string(),
+                require_digest_auth: true,
             },
             api: ApiConfig {
                 http_bind_addr: "0.0.0.0:8080".to_string(),

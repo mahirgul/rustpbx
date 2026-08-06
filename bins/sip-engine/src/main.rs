@@ -52,6 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sip_transport = Arc::new(UdpTransport::bind(sip_addr).await?);
     let sip_transport_listener = sip_transport.clone();
     let db_store_listener = db_store.clone();
+    let cfg_listener = cfg.clone();
     let _sip_transport_task = tokio::spawn(async move {
         loop {
             match sip_transport_listener.recv_message().await {
@@ -61,6 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         src,
                         &sip_transport_listener,
                         &db_store_listener,
+                        &cfg_listener,
                     )
                     .await;
                 }

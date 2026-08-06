@@ -1,5 +1,6 @@
 pub mod error;
 pub mod parser;
+pub mod services;
 pub mod types;
 
 pub use error::{SipError, SipResult};
