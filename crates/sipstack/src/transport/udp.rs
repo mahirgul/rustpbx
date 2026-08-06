@@ -26,6 +26,7 @@ impl UdpTransport {
         target: SocketAddr,
     ) -> Result<usize, std::io::Error> {
         let payload = msg.to_string();
+        info!(">>> OUTGOING SIP Message to {}:\n{}", target, payload);
         self.socket.send_to(payload.as_bytes(), target).await
     }
 
@@ -45,8 +46,11 @@ impl UdpTransport {
             return Err("Short UDP packet ignored".to_string());
         }
 
+        let raw_str = String::from_utf8_lossy(&raw);
+        info!("<<< INCOMING SIP Message from {}:\n{}", src, raw_str);
+
         parse_message(raw).map(|msg| (msg, src)).map_err(|e| {
-            tracing::debug!("Non-SIP or unparseable UDP packet from {}: {}", src, e);
+            info!("Non-SIP or unparseable UDP packet from {}: {}", src, e);
             e.to_string()
         })
     }
