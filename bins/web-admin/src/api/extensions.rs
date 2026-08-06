@@ -73,3 +73,84 @@ pub async fn create_extension(
         })),
     ))
 }
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateExtensionRequest {
+    pub password: Option<String>,
+    pub display_name: Option<String>,
+    pub email: Option<String>,
+    pub record_calls: Option<bool>,
+    pub is_active: Option<bool>,
+}
+
+pub async fn update_extension(
+    State(pool): State<Arc<SqlitePool>>,
+    axum::extract::Path(id): axum::extract::Path<i64>,
+    Json(payload): Json<UpdateExtensionRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let mut query_builder = String::from("UPDATE extensions SET ");
+    let mut updates = Vec::new();
+
+    if payload.display_name.is_some() {
+        updates.push("display_name = ?");
+    }
+    if payload.password.is_some() {
+        updates.push("password = ?");
+    }
+    if payload.email.is_some() {
+        updates.push("email = ?");
+    }
+    if payload.record_calls.is_some() {
+        updates.push("record_calls = ?");
+    }
+    if payload.is_active.is_some() {
+        updates.push("is_active = ?");
+    }
+
+    if updates.is_empty() {
+        return Ok(StatusCode::OK);
+    }
+
+    query_builder.push_str(&updates.join(", "));
+    query_builder.push_str(" WHERE id = ?");
+
+    let mut query = sqlx::query(&query_builder);
+
+    if let Some(name) = &payload.display_name {
+        query = query.bind(name);
+    }
+    if let Some(pass) = &payload.password {
+        query = query.bind(pass);
+    }
+    if let Some(email) = &payload.email {
+        query = query.bind(email);
+    }
+    if let Some(rec) = payload.record_calls {
+        query = query.bind(if rec { 1 } else { 0 });
+    }
+    if let Some(active) = payload.is_active {
+        query = query.bind(if active { 1 } else { 0 });
+    }
+
+    query = query.bind(id);
+
+    query
+        .execute(pool.as_ref())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(StatusCode::OK)
+}
+
+pub async fn delete_extension(
+    State(pool): State<Arc<SqlitePool>>,
+    axum::extract::Path(id): axum::extract::Path<i64>,
+) -> Result<StatusCode, StatusCode> {
+    sqlx::query("DELETE FROM extensions WHERE id = ?")
+        .bind(id)
+        .execute(pool.as_ref())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
