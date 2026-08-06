@@ -48,6 +48,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const btnRefresh = document.getElementById('btn-global-refresh');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', () => {
+            const page = window.location.hash.replace('#', '') || 'dashboard';
+            showToast('Refreshing data...', 'info');
+            navigateTo(page);
+        });
+    }
+
     const initialPage = window.location.hash.replace('#', '') || 'dashboard';
     navigateTo(initialPage);
 

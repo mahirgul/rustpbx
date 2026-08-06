@@ -38,8 +38,11 @@
         <main class="main-content">
             <header class="topbar">
                 <h1 id="page-title">Dashboard</h1>
-                <div class="status-indicator">
-                    <span class="status-dot"></span> PBX Status: <strong>Online</strong>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button id="btn-global-refresh" class="btn btn-sm" style="background: var(--border); color: var(--text-main); font-size: 0.85rem;">🔄 Refresh</button>
+                    <div class="status-indicator">
+                        <span class="status-dot"></span> PBX Status: <strong>Online</strong>
+                    </div>
                 </div>
             </header>
 

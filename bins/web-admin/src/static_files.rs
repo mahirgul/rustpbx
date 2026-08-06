@@ -30,6 +30,17 @@ pub async fn static_handler(uri: Uri) -> impl IntoResponse {
                 .body(axum::body::Body::from(content.data))
                 .unwrap()
         }
-        None => (StatusCode::NOT_FOUND, "404 Not Found").into_response(),
+        None => {
+            // SPA Fallback: If path has no file extension (e.g. /extensions), serve index.html
+            if !path.contains('.') {
+                if let Some(index_content) = Asset::get("index.html") {
+                    return Response::builder()
+                        .header(header::CONTENT_TYPE, HeaderValue::from_static("text/html"))
+                        .body(axum::body::Body::from(index_content.data))
+                        .unwrap();
+                }
+            }
+            (StatusCode::NOT_FOUND, "404 Not Found").into_response()
+        }
     }
 }
