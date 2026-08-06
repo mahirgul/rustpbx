@@ -1,4 +1,5 @@
 pub mod extensions;
+pub mod system;
 
 use axum::{
     routing::{delete, get, post, put},
@@ -9,6 +10,10 @@ use std::sync::Arc;
 
 pub fn create_api_router(pool: Arc<SqlitePool>) -> Router {
     Router::new()
+        .route(
+            "/api/v1/system/dashboard",
+            get(system::get_dashboard_metrics),
+        )
         .route("/api/v1/extensions", get(extensions::list_extensions))
         .route("/api/v1/extensions", post(extensions::create_extension))
         .route("/api/v1/extensions/:id", put(extensions::update_extension))

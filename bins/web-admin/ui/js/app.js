@@ -34,7 +34,53 @@ document.addEventListener('DOMContentLoaded', () => {
     navigateTo(initialPage);
 
     async function renderDashboard() {
-        renderExtensions();
+        try {
+            const res = await fetch('/api/v1/system/dashboard');
+            const data = await res.json();
+            
+            contentArea.innerHTML = `
+                <div class="grid-cards">
+                    <div class="card">
+                        <h3>Registered Subscribers</h3>
+                        <div class="metric">${data.total_registered_subscribers}</div>
+                    </div>
+                    <div class="card">
+                        <h3>Active Calls</h3>
+                        <div class="metric">${data.active_calls}</div>
+                    </div>
+                    <div class="card">
+                        <h3>Database Health</h3>
+                        <div style="font-size: 1.1rem; font-weight: bold; color: var(--success); margin-top: 0.5rem;">${data.database_status}</div>
+                    </div>
+                </div>
+
+                <h2 style="margin-top: 2rem; margin-bottom: 1rem;">System Services Status</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Service Binary</th>
+                            <th>Port / Transport</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.services.map(svc => `
+                            <tr>
+                                <td><strong>${svc.name}</strong></td>
+                                <td><code>${svc.port}</code></td>
+                                <td>
+                                    <span class="badge ${svc.status === 'online' ? '' : 'btn-danger'}" style="${svc.status === 'standby' ? 'background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid var(--warning);' : ''}">
+                                        ${svc.status === 'online' ? '🟢 Running' : (svc.status === 'standby' ? '🟡 Standby' : '🔴 Stopped')}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } catch (e) {
+            contentArea.innerHTML = `<div class="card">Error loading dashboard metrics</div>`;
+        }
     }
 
     async function renderExtensions() {
