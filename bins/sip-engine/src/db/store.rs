@@ -13,11 +13,22 @@ pub struct Extension {
     pub email: Option<String>,
     pub record_calls: i64,
     pub is_active: i64,
+    pub qualify_frequency: i64,
+    pub nat_mode: String,
+    pub min_expires: i64,
+    pub max_expires: i64,
+    pub auth_required: i64,
+    pub max_concurrent_logins: i64,
+    pub allowed_transport: String,
 }
 
 impl Extension {
     pub fn is_recording_enabled(&self) -> bool {
         self.record_calls == 1
+    }
+
+    pub fn is_auth_required(&self) -> bool {
+        self.auth_required == 1
     }
 }
 
@@ -51,7 +62,10 @@ impl DbStore {
     pub async fn load_extensions(&self) -> Result<Vec<Extension>, sqlx::Error> {
         let extensions = sqlx::query_as::<_, Extension>(
             r#"
-            SELECT id, extension_number, password, display_name, email, record_calls, is_active
+            SELECT 
+                id, extension_number, password, display_name, email, record_calls, is_active,
+                qualify_frequency, nat_mode, min_expires, max_expires, auth_required,
+                max_concurrent_logins, allowed_transport
             FROM extensions
             "#,
         )

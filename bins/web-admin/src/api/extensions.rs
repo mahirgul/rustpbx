@@ -12,6 +12,13 @@ pub struct Extension {
     pub email: Option<String>,
     pub record_calls: i64,
     pub is_active: i64,
+    pub qualify_frequency: i64,
+    pub nat_mode: String,
+    pub min_expires: i64,
+    pub max_expires: i64,
+    pub auth_required: i64,
+    pub max_concurrent_logins: i64,
+    pub allowed_transport: String,
     pub is_registered: bool,
 }
 
@@ -22,6 +29,13 @@ pub struct CreateExtensionRequest {
     pub display_name: String,
     pub email: Option<String>,
     pub record_calls: Option<bool>,
+    pub qualify_frequency: Option<i64>,
+    pub nat_mode: Option<String>,
+    pub min_expires: Option<i64>,
+    pub max_expires: Option<i64>,
+    pub auth_required: Option<bool>,
+    pub max_concurrent_logins: Option<i64>,
+    pub allowed_transport: Option<String>,
 }
 
 pub async fn list_extensions(
@@ -42,6 +56,13 @@ pub async fn list_extensions(
             e.email, 
             e.record_calls, 
             e.is_active,
+            e.qualify_frequency,
+            e.nat_mode,
+            e.min_expires,
+            e.max_expires,
+            e.auth_required,
+            e.max_concurrent_logins,
+            e.allowed_transport,
             CASE WHEN r.extension_number IS NOT NULL AND CAST(r.expires_at AS INTEGER) > ? THEN 1 ELSE 0 END AS is_registered
         FROM extensions e
         LEFT JOIN sip_registrations r ON e.extension_number = r.extension_number
@@ -64,6 +85,13 @@ pub async fn list_extensions(
             email: r.get("email"),
             record_calls: r.get("record_calls"),
             is_active: r.get("is_active"),
+            qualify_frequency: r.get("qualify_frequency"),
+            nat_mode: r.get("nat_mode"),
+            min_expires: r.get("min_expires"),
+            max_expires: r.get("max_expires"),
+            auth_required: r.get("auth_required"),
+            max_concurrent_logins: r.get("max_concurrent_logins"),
+            allowed_transport: r.get("allowed_transport"),
             is_registered: r.get::<i64, _>("is_registered") == 1,
         })
         .collect();
@@ -80,11 +108,28 @@ pub async fn create_extension(
     } else {
         0
     };
+    let qualify_frequency = payload.qualify_frequency.unwrap_or(60);
+    let nat_mode = payload.nat_mode.unwrap_or_else(|| "auto".to_string());
+    let min_expires = payload.min_expires.unwrap_or(60);
+    let max_expires = payload.max_expires.unwrap_or(3600);
+    let auth_required = if payload.auth_required.unwrap_or(true) {
+        1
+    } else {
+        0
+    };
+    let max_concurrent_logins = payload.max_concurrent_logins.unwrap_or(1);
+    let allowed_transport = payload
+        .allowed_transport
+        .unwrap_or_else(|| "udp,tcp,tls,ws".to_string());
 
     let result = sqlx::query(
         r#"
-        INSERT INTO extensions (extension_number, password, display_name, email, record_calls)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO extensions (
+            extension_number, password, display_name, email, record_calls,
+            qualify_frequency, nat_mode, min_expires, max_expires, auth_required,
+            max_concurrent_logins, allowed_transport
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(&payload.extension_number)
@@ -92,6 +137,13 @@ pub async fn create_extension(
     .bind(&payload.display_name)
     .bind(&payload.email)
     .bind(record_calls)
+    .bind(qualify_frequency)
+    .bind(nat_mode)
+    .bind(min_expires)
+    .bind(max_expires)
+    .bind(auth_required)
+    .bind(max_concurrent_logins)
+    .bind(allowed_transport)
     .execute(pool.as_ref())
     .await
     .map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -112,6 +164,13 @@ pub struct UpdateExtensionRequest {
     pub email: Option<String>,
     pub record_calls: Option<bool>,
     pub is_active: Option<bool>,
+    pub qualify_frequency: Option<i64>,
+    pub nat_mode: Option<String>,
+    pub min_expires: Option<i64>,
+    pub max_expires: Option<i64>,
+    pub auth_required: Option<bool>,
+    pub max_concurrent_logins: Option<i64>,
+    pub allowed_transport: Option<String>,
 }
 
 pub async fn update_extension(
@@ -137,6 +196,27 @@ pub async fn update_extension(
     if payload.is_active.is_some() {
         updates.push("is_active = ?");
     }
+    if payload.qualify_frequency.is_some() {
+        updates.push("qualify_frequency = ?");
+    }
+    if payload.nat_mode.is_some() {
+        updates.push("nat_mode = ?");
+    }
+    if payload.min_expires.is_some() {
+        updates.push("min_expires = ?");
+    }
+    if payload.max_expires.is_some() {
+        updates.push("max_expires = ?");
+    }
+    if payload.auth_required.is_some() {
+        updates.push("auth_required = ?");
+    }
+    if payload.max_concurrent_logins.is_some() {
+        updates.push("max_concurrent_logins = ?");
+    }
+    if payload.allowed_transport.is_some() {
+        updates.push("allowed_transport = ?");
+    }
 
     if updates.is_empty() {
         return Ok(StatusCode::OK);
@@ -161,6 +241,27 @@ pub async fn update_extension(
     }
     if let Some(active) = payload.is_active {
         query = query.bind(if active { 1 } else { 0 });
+    }
+    if let Some(q) = payload.qualify_frequency {
+        query = query.bind(q);
+    }
+    if let Some(nat) = &payload.nat_mode {
+        query = query.bind(nat);
+    }
+    if let Some(min_exp) = payload.min_expires {
+        query = query.bind(min_exp);
+    }
+    if let Some(max_exp) = payload.max_expires {
+        query = query.bind(max_exp);
+    }
+    if let Some(auth) = payload.auth_required {
+        query = query.bind(if auth { 1 } else { 0 });
+    }
+    if let Some(logins) = payload.max_concurrent_logins {
+        query = query.bind(logins);
+    }
+    if let Some(transports) = &payload.allowed_transport {
+        query = query.bind(transports);
     }
 
     query = query.bind(id);

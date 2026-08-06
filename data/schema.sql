@@ -9,6 +9,13 @@ CREATE TABLE IF NOT EXISTS extensions (
     email TEXT,
     record_calls INTEGER NOT NULL DEFAULT 0, -- 0 = false, 1 = true
     is_active INTEGER NOT NULL DEFAULT 1,
+    qualify_frequency INTEGER NOT NULL DEFAULT 60, -- SIP OPTIONS ping frequency in seconds (0 = disabled)
+    nat_mode TEXT NOT NULL DEFAULT 'auto', -- 'auto', 'force_rport', 'stun', 'disabled'
+    min_expires INTEGER NOT NULL DEFAULT 60,
+    max_expires INTEGER NOT NULL DEFAULT 3600,
+    auth_required INTEGER NOT NULL DEFAULT 1, -- Digest auth required for this extension
+    max_concurrent_logins INTEGER NOT NULL DEFAULT 1,
+    allowed_transport TEXT NOT NULL DEFAULT 'udp,tcp,tls,ws',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

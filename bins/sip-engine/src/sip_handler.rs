@@ -93,8 +93,8 @@ async fn handle_register(
         }
     };
 
-    // Check if Digest Auth is enabled
-    if cfg.sip.require_digest_auth {
+    // Check if Digest Auth is enabled (globally AND for this specific extension)
+    if cfg.sip.require_digest_auth && ext.is_auth_required() {
         let auth_header = msg.headers.get(&HeaderName::Authorization);
 
         match auth_header {
@@ -123,6 +123,10 @@ async fn handle_register(
                         .get(&HeaderName::Contact)
                         .map(|h| String::from_utf8_lossy(&h.raw_value).to_string())
                         .unwrap_or_else(|| src.to_string());
+
+                    // Enforce extension's min/max expires limits
+                    let granted_expires = ext.max_expires.clamp(ext.min_expires, 86400);
+
                     let _ = db
                         .upsert_registration(
                             &ext.extension_number,
@@ -130,10 +134,10 @@ async fn handle_register(
                             &contact,
                             &src.ip().to_string(),
                             src.port() as i32,
-                            3600,
+                            granted_expires,
                         )
                         .await;
-                    send_register_200_ok(msg, src, transport).await;
+                    send_register_200_ok(msg, src, transport, granted_expires).await;
                 } else {
                     warn!(
                         "Digest Auth FAILED for Ext {} from {}",
@@ -145,10 +149,11 @@ async fn handle_register(
         }
     } else {
         info!(
-            "Digest Auth disabled. Granting 200 OK for Ext {} from {}",
+            "Digest Auth disabled for Ext {}. Granting 200 OK from {}",
             ext.extension_number, src
         );
-        send_register_200_ok(msg, src, transport).await;
+        let granted_expires = ext.max_expires.clamp(ext.min_expires, 86400);
+        send_register_200_ok(msg, src, transport, granted_expires).await;
     }
 }
 
@@ -195,13 +200,17 @@ async fn send_register_200_ok(
     request: SipMessage,
     dest: SocketAddr,
     transport: &Arc<UdpTransport>,
+    granted_expires: i64,
 ) {
     let mut resp_headers = extract_base_headers(&request);
 
     if let Some(contact) = request.headers.get(&HeaderName::Contact) {
         resp_headers.push(contact.clone());
     }
-    resp_headers.push(Header::new(HeaderName::Expires, Bytes::from("3600")));
+    resp_headers.push(Header::new(
+        HeaderName::Expires,
+        Bytes::from(format!("{}", granted_expires)),
+    ));
     resp_headers.push(Header::new(
         HeaderName::UserAgent,
         Bytes::from("RustPBX/0.1.0"),
@@ -219,7 +228,10 @@ async fn send_register_200_ok(
     if let Err(e) = transport.send_to(&resp_msg, dest).await {
         warn!("Failed to send REGISTER 200 OK to {}: {}", dest, e);
     } else {
-        info!("Sent REGISTER 200 OK (Expires: 3600) to {}", dest);
+        info!(
+            "Sent REGISTER 200 OK (Expires: {}) to {}",
+            granted_expires, dest
+        );
     }
 }
 
