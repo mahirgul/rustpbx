@@ -22,18 +22,15 @@ pub struct DashboardMetrics {
 }
 
 pub async fn get_dashboard_metrics(State(pool): State<Arc<SqlitePool>>) -> Json<DashboardMetrics> {
-    let now_secs = format!(
-        "{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-    );
+    let now_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
 
     let active_registrations_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sip_registrations WHERE CAST(expires_at AS INTEGER) > CAST(? AS INTEGER)",
+        "SELECT COUNT(*) FROM sip_registrations WHERE CAST(expires_at AS INTEGER) > ?",
     )
-    .bind(&now_secs)
+    .bind(now_secs)
     .fetch_one(pool.as_ref())
     .await
     .unwrap_or(0);

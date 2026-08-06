@@ -27,13 +27,10 @@ pub struct CreateExtensionRequest {
 pub async fn list_extensions(
     State(pool): State<Arc<SqlitePool>>,
 ) -> Result<Json<Vec<Extension>>, StatusCode> {
-    let now_secs = format!(
-        "{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-    );
+    let now_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
 
     let rows = sqlx::query(
         r#"
@@ -45,13 +42,13 @@ pub async fn list_extensions(
             e.email, 
             e.record_calls, 
             e.is_active,
-            CASE WHEN r.extension_number IS NOT NULL AND CAST(r.expires_at AS INTEGER) > CAST(? AS INTEGER) THEN 1 ELSE 0 END AS is_registered
+            CASE WHEN r.extension_number IS NOT NULL AND CAST(r.expires_at AS INTEGER) > ? THEN 1 ELSE 0 END AS is_registered
         FROM extensions e
         LEFT JOIN sip_registrations r ON e.extension_number = r.extension_number
         ORDER BY e.extension_number ASC
         "#,
     )
-    .bind(&now_secs)
+    .bind(now_secs)
     .fetch_all(pool.as_ref())
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

@@ -70,7 +70,7 @@ impl DbStore {
         port: i32,
         expires_secs: i64,
     ) -> Result<(), sqlx::Error> {
-        let expires_at = chrono_offset_secs(expires_secs);
+        let expires_at = current_unix_secs() + expires_secs;
         sqlx::query(
             r#"
             INSERT INTO sip_registrations (extension_number, user_agent, contact_uri, source_ip, source_port, expires_at, updated_at)
@@ -97,11 +97,10 @@ impl DbStore {
     }
 }
 
-fn chrono_offset_secs(secs: i64) -> String {
+fn current_unix_secs() -> i64 {
     use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now()
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    format!("{}", now + secs as u64)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
