@@ -2769,6 +2769,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "webrtc-gateway"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "bytes",
+ "pbx-proto",
+ "sdpcore",
+ "serde",
+ "serde_json",
+ "sipcore",
+ "sipstack",
+ "thiserror 1.0.69",
+ "tokio",
+ "toml",
+ "tonic",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "whoami"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
