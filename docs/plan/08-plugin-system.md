@@ -36,3 +36,7 @@
 * **Timeout:** Configurable per-plugin (default: 100ms, max: 5000ms). On timeout, execute configurable fallback routing plan.
 * **Language Support:** Go, Python, C#, Node.js, Java, Rust — any language supporting gRPC.
 * **Use Cases:** CRM integration, call center queuing, AI speech recognition, billing systems.
+
+---
+
+> See also [31 — Modular Extension Points & Codec API](31-modular-plugin-and-codec-api.md) for trait-based extension points and pluggable codec modules.

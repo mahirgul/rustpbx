@@ -37,6 +37,9 @@ This directory contains the complete architectural specification, design documen
 | 26 | [26-observability-and-monitoring.md](26-observability-and-monitoring.md) | Prometheus metrics, OpenTelemetry distributed tracing & HOMER HEP packet capture |
 | 27 | [27-auto-provisioning.md](27-auto-provisioning.md) | IP Phone Auto-Provisioning for Yealink, Grandstream, Fanvil, Snom, Cisco & Polycom |
 | 28 | [28-dhcp-and-tftp-servers.md](28-dhcp-and-tftp-servers.md) | Embedded Pure Rust DHCP (Option 66/160) & TFTP servers for zero-touch deployment |
+| 29 | [29-sip-admin-decoupling.md](29-sip-admin-decoupling.md) | Making `sip-engine` a pure SIP server: `pbx-store`, in-memory state, authenticated control API, `ConfigSource` |
+| 30 | [30-sip-core-hardening-roadmap.md](30-sip-core-hardening-roadmap.md) | Gap analysis and M0–M4 milestones toward a Routr-class proxy/registrar on our own RFC 3261 stack |
+| 31 | [31-modular-plugin-and-codec-api.md](31-modular-plugin-and-codec-api.md) | Trait-based extension points, pluggable codec modules (Rust crates + WASM) |
 
 ---
 

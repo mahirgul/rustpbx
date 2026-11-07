@@ -44,3 +44,7 @@ The **`web-admin`** binary (`bins/web-admin/`) is the central, unified administr
 - **Control Commands**: `web-admin` communicates with `sip-engine`, `media-node`, `call-center`, and `voicemail` via high-speed gRPC.
 - **Config Persistence**: Writes changes directly to SQLite (WAL Mode), triggering instant atomic in-memory cache updates in `sip-engine`.
 - **Live UI Updates**: Uses WebSockets (`/api/v1/events`) to stream real-time call states, active agent statuses, and system metrics directly to the browser.
+
+---
+
+> **Update (2026-11-07):** `web-admin` must not read SIP runtime state from the database. See [29 — SIP / Admin Decoupling](29-sip-admin-decoupling.md) for the control API and ownership rules.
