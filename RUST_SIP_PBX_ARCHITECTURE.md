@@ -51,6 +51,9 @@ The full architectural blueprint is split into modular files under `docs/plan/`:
 | 26 | [Observability & Metrics](docs/plan/26-observability-and-monitoring.md) | Prometheus metrics, OpenTelemetry distributed tracing & HOMER HEP packet capture |
 | 27 | [Auto-Provisioning System](docs/plan/27-auto-provisioning.md) | IP Phone Auto-Provisioning for Yealink, Grandstream, Fanvil, Snom, Cisco & Polycom |
 | 28 | [DHCP & TFTP Servers](docs/plan/28-dhcp-and-tftp-servers.md) | Embedded Pure Rust DHCP (Option 66/160) & TFTP servers for zero-touch deployment |
+| 29 | [SIP / Admin Decoupling](docs/plan/29-sip-admin-decoupling.md) | Making `sip-engine` a pure SIP server: `pbx-store`, in-memory state, authenticated control API, `ConfigSource` |
+| 30 | [SIP Core Hardening Roadmap](docs/plan/30-sip-core-hardening-roadmap.md) | Gap analysis and M0–M4 milestones toward a Routr-class proxy/registrar on our own RFC 3261 stack |
+| 31 | [Modular Extension Points & Codec API](docs/plan/31-modular-plugin-and-codec-api.md) | Trait-based extension points, pluggable codec modules (Rust crates + WASM) |
 
 ---
 

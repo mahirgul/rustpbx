@@ -119,3 +119,6 @@ Implemented in-process within `sip-engine` (`bins/sip-engine/src/sbc/`) via `sip
 - [26-observability-and-monitoring.md](26-observability-and-monitoring.md) — Prometheus metrics, OpenTelemetry distributed tracing & HOMER HEP capture
 - [27-auto-provisioning.md](27-auto-provisioning.md) — IP Phone Auto-Provisioning for Yealink, Grandstream, Fanvil, Snom, Cisco & Polycom
 - [28-dhcp-and-tftp-servers.md](28-dhcp-and-tftp-servers.md) — Embedded Pure Rust DHCP (Option 66/160) & TFTP servers for zero-touch deployment
+- [29-sip-admin-decoupling.md](29-sip-admin-decoupling.md) — Making `sip-engine` a pure SIP server, decoupled from `web-admin`
+- [30-sip-core-hardening-roadmap.md](30-sip-core-hardening-roadmap.md) — Gap analysis and M0–M4 hardening milestones (own RFC 3261 stack)
+- [31-modular-plugin-and-codec-api.md](31-modular-plugin-and-codec-api.md) — Trait-based extension points and pluggable codec modules

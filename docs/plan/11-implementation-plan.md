@@ -56,3 +56,7 @@ Across all phases, the following rules are strictly enforced:
 2. **Weeks 29-30:** Security & Protection — SIP digest authentication, rate limiting (token bucket), toll fraud detection rules.
 3. **Week 31:** Administration & Tier 2 Plugins — `web-admin` (REST API + management UI), Tier 2 gRPC plugin API (`call-center` queue service).
 4. **Week 32:** Observability & Benchmarks — Prometheus metrics (`/metrics`), OpenTelemetry tracing, high-concurrency SIPp benchmarking (5000+ calls target), CI/CD pipelines, complete documentation.
+
+---
+
+> **Update (2026-11-07):** The SIP core priorities are refined in [30 — SIP Core Hardening Roadmap](30-sip-core-hardening-roadmap.md) (milestones M0–M4), which takes precedence for `sipstack` and `sip-engine` work.
